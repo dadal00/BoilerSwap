@@ -1,7 +1,7 @@
 <script lang="ts">
 	function submitContact(event: SubmitEvent) {
-		event.preventDefault();
-		alert('Message sent successfully! (This is a demo - no actual email was sent)');
+		event.preventDefault()
+		alert('Message sent successfully! (This is a demo - no actual email was sent)')
 	}
 </script>
 

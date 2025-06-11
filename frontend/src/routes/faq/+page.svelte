@@ -1,8 +1,8 @@
 <script lang="ts">
-	let activeCategory = $state('login');
+	let activeCategory = $state('login')
 
 	function showCategory(category: string) {
-		activeCategory = category;
+		activeCategory = category
 	}
 </script>
 

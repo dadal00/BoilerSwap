@@ -1,8 +1,8 @@
 <script lang="ts">
-	let activeTab = $state('login');
+	let activeTab = $state('login')
 
 	function showTab(tab: string) {
-		activeTab = tab;
+		activeTab = tab
 	}
 </script>
 
