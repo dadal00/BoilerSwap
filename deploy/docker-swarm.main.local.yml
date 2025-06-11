@@ -1,0 +1,109 @@
+services:
+  rust:
+    image: boiler_rust:latest
+    networks:
+      - main_net
+      # - monitor_net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    # logging:
+    #   driver: loki
+    #   options:
+    #     mode: non-blocking
+    #     loki-url: ${LOKI_URL}
+    #     loki-batch-size: "10"
+    #     loki-timeout: "10s"
+    #     loki-retries: "3"
+    environment:
+      - RUST_PORT=${RUST_PORT}
+      - RUST_LOG=${RUST_LOG}
+      - SVELTE_URL=${SVELTE_URL}
+
+  svelte:
+    image: boiler_svelte:latest
+    networks:
+      - main_net
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${SVELTE_PORT}
+
+  caddy:
+    image: boiler_caddy:latest
+    networks:
+      - main_net
+    ports:
+      - "80:80"
+      - "443:443"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    # logging:
+    #   driver: loki
+    #   options:
+    #     mode: non-blocking
+    #     loki-url: ${LOKI_URL}
+    #     loki-batch-size: "10"
+    #     loki-timeout: "10s"
+    #     loki-retries: "3"
+    command: sh -c "caddy run --config /etc/caddy/Caddyfile"
+    environment:
+      - CADDY_LOG_ROTATE_DAYS=356
+      - CADDY_LOG_ROTATE_SIZE=10000
+      - CADDY_DOMAIN=${CADDY_DOMAIN}
+      - RUST_NAME=${RUST_NAME}
+      - RUST_PORT=${RUST_PORT}
+      - SVELTE_NAME=${SVELTE_NAME}
+      - SVELTE_PORT=${SVELTE_PORT}
+    volumes:
+      - ./caddy/data:/data
+      - ./caddy/config:/config
+      - ./caddy/logs:/var/log/caddy
+      - ./caddy/config/Caddyfile.local:/etc/caddy/Caddyfile
+
+  # loki:
+  #   image: grafana/loki:3.4.3@sha256:5fe9fa99e9a747297cdf0239a5b25d192d8f668bd6505b09beef4dffcab5aac2
+  #   networks:
+  #     - monitor_net
+  #   ports:
+  #     - "3100:3100"
+  #   volumes:
+  #     - ../monitor/loki_config.yml:/etc/loki/loki_config.yml
+  #     - ../monitor/loki_data:/loki_data
+  #   command: -config.file=/etc/loki/loki_config.yml
+
+  # goaccess:
+  #   image: allinurl/goaccess:1.9.4@sha256:9f8273d6b46fcbb7cb9334a7e8d20a6167ec570080f62731e7b2cb45803b8a2f
+  #   volumes:
+  #     - ./caddy/logs:/var/log/caddy
+  #     - ../monitor/goaccess/www/report.html:/www/report.html
+  #     - ../monitor/goaccess/mmdb:/mmdb
+  #   ports:
+  #     - "7890:7890"
+  #   command:
+  #     [
+  #       "--log-file=/var/log/caddy/access.log",
+  #       "-o",
+  #       "/www/report.html",
+  #       "--real-time-html",
+  #       "--port=7890",
+  #       "--keep-last=356",
+  #       "--no-global-config",
+  #       "--log-format=CADDY",
+  #     ]
+
+networks:
+  main_net:
+    driver: overlay
+    name: main_net
+  # monitor_net:
+  #   external: true
+  #   name: monitor_net

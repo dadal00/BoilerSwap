@@ -1,0 +1,17 @@
+services:
+  boiler_rust:
+    build:
+      context: ../backend
+    image: boiler_rust:latest
+
+  boiler_svelte:
+    build:
+      args:
+        - BACKEND_URL=${BACKEND_URL}
+      context: ../frontend
+    image: boiler_svelte:latest
+
+  boiler_caddy:
+    build:
+      context: ./caddy
+    image: boiler_caddy:latest
