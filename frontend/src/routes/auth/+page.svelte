@@ -4,6 +4,11 @@
 	function showTab(tab: string) {
 		activeTab = tab
 	}
+
+	async function login() {
+		const response = await fetch('/api/login')
+		console.log('Final response:', response)
+	}
 </script>
 
 <svelte:head>
@@ -79,8 +84,10 @@
 				</div>
 				<button
 					class="w-full bg-yellow-400 text-gray-800 hover:bg-yellow-500 py-2 rounded-lg transition-colors"
-					>Login</button
+					onclick={login}
 				>
+					Login
+				</button>
 				<div class="text-center">
 					<button onclick={() => showTab('forgot')} class="text-yellow-600 hover:underline text-sm">
 						Forgot your password?
