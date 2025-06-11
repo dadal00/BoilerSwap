@@ -1,8 +1,9 @@
 <script lang="ts">
-	let { children } = $props();
 	import '../app.css';
 	import NavBar from '$lib/components/NavBar.svelte';
 	import { afterNavigate } from '$app/navigation';
+
+	let { children } = $props();
 
 	let currentRoute = $state('/');
 	afterNavigate((navigation) => {
