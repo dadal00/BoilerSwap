@@ -1,0 +1,67 @@
+services:
+  grafana:
+    image: grafana/grafana:11.3.5@sha256:6b7e05805ea8319e896df3ac5ad149350cfa860a463747472c9d0c5102256dc4
+    networks:
+      - monitor_net
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_USERS_DEFAULT_THEME=light
+    ports:
+      - "3000:3000"
+    deploy:
+      mode: replicated
+      replicas: 1
+
+  prometheus:
+    image: prom/prometheus:v3.2.1@sha256:6927e0919a144aa7616fd0137d4816816d42f6b816de3af269ab065250859a62
+    networks:
+      - monitor_net
+    volumes:
+      - ./prometheus_config.yml:/etc/prometheus/prometheus_config.yml
+      - ./prometheus_data:/prometheus_data
+    command:
+      - "--config.file=/etc/prometheus/prometheus_config.yml"
+      - "--storage.tsdb.retention.time=1y"
+      - "--storage.tsdb.path=/prometheus_data"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.wal-compression"
+
+  loki:
+    image: grafana/loki:3.4.3@sha256:5fe9fa99e9a747297cdf0239a5b25d192d8f668bd6505b09beef4dffcab5aac2
+    networks:
+      - monitor_net
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki_config.yml:/etc/loki/loki_config.yml
+      - ./loki_data:/loki_data
+    command: -config.file=/etc/loki/loki_config.yml
+
+  goaccess:
+    image: allinurl/goaccess:1.9.4@sha256:9f8273d6b46fcbb7cb9334a7e8d20a6167ec570080f62731e7b2cb45803b8a2f
+    volumes:
+      - ../deploy/caddy/logs:/var/log/caddy
+      - ./goaccess/www/report.html:/www/report.html
+      - ./goaccess/mmdb:/mmdb
+    ports:
+      - "7890:7890"
+    command:
+      [
+        "--log-file=/var/log/caddy/access.log",
+        "-o",
+        "/www/report.html",
+        "--real-time-html",
+        "--port=7890",
+        "--keep-last=356",
+        "--no-global-config",
+        "--log-format=CADDY",
+      ]
+
+networks:
+  monitor_net:
+    external: true
+    name: monitor_net

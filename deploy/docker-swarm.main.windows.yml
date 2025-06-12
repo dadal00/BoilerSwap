@@ -9,14 +9,6 @@ services:
       restart_policy:
         condition: on-failure
         delay: 5s
-    logging:
-      driver: loki
-      options:
-        mode: non-blocking
-        loki-url: ${LOKI_URL}
-        loki-batch-size: "10"
-        loki-timeout: "10s"
-        loki-retries: "3"
     environment:
       - RUST_PORT=${RUST_PORT}
       - RUST_LOG=${RUST_LOG}
@@ -46,14 +38,6 @@ services:
       restart_policy:
         condition: on-failure
         delay: 5s
-    logging:
-      driver: loki
-      options:
-        mode: non-blocking
-        loki-url: ${LOKI_URL}
-        loki-batch-size: "10"
-        loki-timeout: "10s"
-        loki-retries: "3"
     command: sh -c "caddy run --config /etc/caddy/Caddyfile"
     environment:
       - CADDY_LOG_ROTATE_DAYS=356
