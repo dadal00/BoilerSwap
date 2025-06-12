@@ -1,9 +1,29 @@
 services:
+  scylladb:
+    image: scylladb/scylla:2025.1.2@sha256:84e914792c61a7703ff616bf6ee6d4becbcf68845221bd2458fcab10ef64302c
+    networks:
+      - main_net
+    volumes:
+      - ./scylladb_data:/var/lib/scylla
+    command: --smp=1 --memory=1G --overprovisioned=1 --api-address=0.0.0.0
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    logging:
+      driver: loki
+      options:
+        mode: non-blocking
+        loki-url: ${LOKI_URL}
+        loki-batch-size: "10"
+        loki-timeout: "10s"
+        loki-retries: "3"
+
   rust:
     image: boiler_rust:latest
     networks:
       - main_net
-      - monitor_net
     deploy:
       replicas: 1
       restart_policy:
@@ -71,7 +91,7 @@ services:
 
 networks:
   main_net:
-    driver: overlay
+    external: true
     name: main_net
   monitor_net:
     external: true
