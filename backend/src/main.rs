@@ -3,6 +3,7 @@ use crate::{
     config::Config,
     error::AppError,
     metrics::{Metrics, metrics_handler},
+    signals::shutdown_signal,
     state::AppState,
 };
 use axum::{
@@ -20,6 +21,7 @@ mod api;
 mod config;
 mod error;
 mod metrics;
+mod signals;
 mod state;
 
 #[tokio::main]
@@ -62,7 +64,9 @@ async fn main() -> Result<(), AppError> {
     let listener = TcpListener::bind(&addr).await?;
     info!("Server running on {}", addr);
 
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
     Ok(())
 }
