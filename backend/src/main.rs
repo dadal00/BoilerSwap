@@ -1,10 +1,16 @@
-use crate::{api::default_handler, config::Config, error::AppError, state::AppState};
+use crate::{
+    api::default_handler,
+    config::Config,
+    error::AppError,
+    metrics::{Metrics, metrics_handler},
+    state::AppState,
+};
 use axum::{
     Router,
     http::{Method, header::CONTENT_TYPE},
     routing::get,
 };
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::info;
@@ -13,6 +19,7 @@ use tracing_subscriber::{EnvFilter, fmt};
 mod api;
 mod config;
 mod error;
+mod metrics;
 mod state;
 
 #[tokio::main]
@@ -27,6 +34,7 @@ async fn main() -> Result<(), AppError> {
 
     let state = Arc::new(AppState {
         config: Config::load()?,
+        metrics: Metrics::default(),
     });
 
     info!("Server configuration");
@@ -43,10 +51,10 @@ async fn main() -> Result<(), AppError> {
         .max_age(Duration::from_secs(60 * 60));
 
     let app = Router::new()
-        .route("/api/login", get(default_handler))
+        .route("/login", get(default_handler))
+        .route("/metrics", get(metrics_handler))
         .layer(cors)
-        .with_state(state.clone())
-        .into_make_service_with_connect_info::<SocketAddr>();
+        .with_state(state.clone());
 
     let addr = format!("0.0.0.0:{}", state.config.rust_port);
     info!("Binding to {}", addr);

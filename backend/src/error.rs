@@ -2,7 +2,8 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use std::{env::VarError, io::Error as IOError};
+use prometheus::Error as prometheusError;
+use std::{env::VarError, io::Error as IOError, string::FromUtf8Error};
 use thiserror::Error;
 use tracing::error;
 
@@ -16,6 +17,12 @@ pub enum AppError {
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("UTF-8 conversion error: {0}")]
+    Utf8(#[from] FromUtf8Error),
+
+    #[error("Prometheus error: {0}")]
+    Prometheus(#[from] prometheusError),
 }
 
 impl IntoResponse for AppError {
