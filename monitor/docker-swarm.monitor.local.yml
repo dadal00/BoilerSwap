@@ -20,8 +20,9 @@ services:
     image: prom/prometheus:v3.2.1@sha256:6927e0919a144aa7616fd0137d4816816d42f6b816de3af269ab065250859a62
     networks:
       - monitor_net
+      - main_net
     volumes:
-      - ./prometheus_config.yml:/etc/prometheus/prometheus_config.yml
+      - ./prometheus_config.local.yml:/etc/prometheus/prometheus_config.yml
       - ./prometheus_data:/prometheus_data
     command:
       - "--config.file=/etc/prometheus/prometheus_config.yml"
@@ -62,6 +63,9 @@ services:
       ]
 
 networks:
+  main_net:
+    external: true
+    name: main_net
   monitor_net:
     external: true
     name: monitor_net
