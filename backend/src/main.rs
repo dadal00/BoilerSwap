@@ -1,9 +1,5 @@
 use crate::{
-    api::default_handler,
-    config::Config,
-    error::AppError,
-    metrics::{Metrics, metrics_handler},
-    signals::shutdown_signal,
+    api::default_handler, error::AppError, metrics::metrics_handler, signals::shutdown_signal,
     state::AppState,
 };
 use axum::{
@@ -11,7 +7,7 @@ use axum::{
     http::{Method, header::CONTENT_TYPE},
     routing::get,
 };
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 use tokio::net::TcpListener;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::info;
@@ -19,6 +15,7 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 mod api;
 mod config;
+mod db;
 mod error;
 mod metrics;
 mod signals;
@@ -34,10 +31,7 @@ async fn main() -> Result<(), AppError> {
 
     info!("Starting server...");
 
-    let state = Arc::new(AppState {
-        config: Config::load()?,
-        metrics: Metrics::default(),
-    });
+    let state = AppState::new().await?;
 
     info!("Server configuration");
     info!("rust_port = {}", state.config.rust_port);
@@ -54,6 +48,10 @@ async fn main() -> Result<(), AppError> {
 
     let app = Router::new()
         .route("/login", get(default_handler))
+        .route("/signup", get(default_handler))
+        .route("/verify-email", get(default_handler))
+        .route("/post-item", get(default_handler))
+        .route("/get-items", get(default_handler))
         .route("/metrics", get(metrics_handler))
         .layer(cors)
         .with_state(state.clone());
