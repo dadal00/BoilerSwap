@@ -1,7 +1,10 @@
-use crate::{config::Config, database::init_database, error::AppError, metrics::Metrics, api::VerificationInfo};
-use scylla::{client::session::Session, statement::prepared::PreparedStatement};
-use std::{time::Duration,sync::Arc};
+use crate::{
+    api::VerificationInfo, config::Config, database::init_database, error::AppError,
+    metrics::Metrics,
+};
 use moka::future::Cache;
+use scylla::{client::session::Session, statement::prepared::PreparedStatement};
+use std::{sync::Arc, time::Duration};
 use uuid::Uuid;
 
 pub struct AppState {
@@ -24,7 +27,7 @@ impl AppState {
         let verification_map = Arc::new(
             Cache::builder()
                 .time_to_live(Duration::from_secs(300))
-                .build()
+                .build(),
         );
 
         Ok(Arc::new(Self {

@@ -10,7 +10,7 @@ use axum::{
     http::{Method, header::CONTENT_TYPE},
     routing::{get, post},
 };
-use std::{time::Duration, net::SocketAddr};
+use std::{net::SocketAddr, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::info;

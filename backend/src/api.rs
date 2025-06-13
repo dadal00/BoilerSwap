@@ -1,13 +1,21 @@
 use crate::{AppError, database::get_user, state::AppState};
-use axum::{Json, extract::{State, ConnectInfo}, http::{StatusCode, header::HeaderMap,}, response::IntoResponse};
+use axum::{
+    Json,
+    extract::{ConnectInfo, State},
+    http::{StatusCode, header::HeaderMap},
+    response::IntoResponse,
+};
 use once_cell::sync::Lazy;
+use rand::{Rng, SeedableRng, rng, rngs::StdRng};
 use regex::Regex;
-use std::{sync::Arc, net::{IpAddr, SocketAddr},};
-use sha2::{Digest, Sha256};
-use tracing::info;
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
+use tracing::info;
 use uuid::Uuid;
-use rand::{SeedableRng, rngs::StdRng, rng, Rng};
 
 #[derive(Deserialize)]
 pub struct Account {
@@ -63,7 +71,10 @@ pub async fn authenticate_handler(
         attempts: 0,
     };
 
-    state.verification_map.insert(authentication_id, verification_entry).await;
+    state
+        .verification_map
+        .insert(authentication_id, verification_entry)
+        .await;
 
     Ok((StatusCode::OK, authentication_id.to_string()).into_response())
 }
