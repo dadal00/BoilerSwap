@@ -1,13 +1,52 @@
 <script lang="ts">
+	import { PUBLIC_BACKEND_URL } from '$env/static/public'
+	import type { Account } from '$lib/models'
+
 	let activeTab = $state('login')
+	let authenticationID: string = ''
+	let account: Account = { email: '', password: '' }
+	let confirmPassword: string = $state('')
 
 	function showTab(tab: string) {
 		activeTab = tab
 	}
 
 	async function login() {
-		const response = await fetch('/api/login')
-		console.log('Final response:', response)
+		const response = await fetch(PUBLIC_BACKEND_URL + '/login')
+	}
+
+	async function signup() {
+		if (!/.+@purdue\.edu$/.test(account.email)) {
+			console.log('Signup failed: email must be a Purdue address')
+			return
+		}
+		if (account.password === '') {
+			console.log('Signup failed: invalid password')
+			return
+		}
+		if (account.password !== confirmPassword) {
+			console.log('Signup failed: passwords do not match')
+			return
+		}
+
+		try {
+			const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(account)
+			})
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`)
+			}
+
+			authenticationID = await response.text()
+			// console.log(authenticationID)
+		} catch (err) {
+			console.log('Signup failed: ', err)
+		}
 	}
 </script>
 
@@ -109,6 +148,8 @@
 							type="email"
 							placeholder="yourname@purdue.edu"
 							class="w-full px-4 py-2 border rounded-lg"
+							maxlength="64"
+							bind:value={account.email}
 						/>
 					</label>
 					<p class="text-xs text-gray-500 mt-1">Must be a valid @purdue.edu email address</p>
@@ -116,19 +157,32 @@
 				<div>
 					<label class="block text-sm font-medium mb-2">
 						Password
-						<input type="password" class="w-full px-4 py-2 border rounded-lg" />
+						<input
+							type="password"
+							class="w-full px-4 py-2 border rounded-lg"
+							maxlength="64"
+							required
+							bind:value={account.password}
+						/>
 					</label>
 				</div>
 				<div>
 					<label class="block text-sm font-medium mb-2">
 						Confirm Password
-						<input type="password" class="w-full px-4 py-2 border rounded-lg" />
+						<input
+							type="password"
+							class="w-full px-4 py-2 border rounded-lg"
+							maxlength="64"
+							bind:value={confirmPassword}
+						/>
 					</label>
 				</div>
 				<button
 					class="w-full bg-yellow-400 text-gray-800 hover:bg-yellow-500 py-2 rounded-lg transition-colors"
-					>Create Account</button
+					onclick={signup}
 				>
+					Create Account
+				</button>
 				<p class="text-xs text-gray-500 text-center">
 					By creating an account, you agree to our <a
 						href="disclaimer"
