@@ -29,6 +29,8 @@ services:
       restart_policy:
         condition: on-failure
         delay: 5s
+    secrets:
+      - RUST_HASH_SALT
     logging:
       driver: loki
       options:
@@ -89,6 +91,10 @@ services:
       - ./caddy/config:/config
       - ./caddy/logs:/var/log/caddy
       - ./caddy/config/Caddyfile.local:/etc/caddy/Caddyfile
+
+secrets:
+  RUST_HASH_SALT:
+    external: true
 
 networks:
   main_net:

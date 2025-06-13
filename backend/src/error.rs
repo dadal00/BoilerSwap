@@ -3,7 +3,9 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use prometheus::Error as prometheusError;
-use scylla::errors::{ExecutionError, NewSessionError};
+use scylla::errors::{
+    ExecutionError, FirstRowError, IntoRowsResultError, NewSessionError, PrepareError,
+};
 use std::{env::VarError, io::Error as IOError, string::FromUtf8Error};
 use thiserror::Error;
 use tracing::error;
@@ -25,11 +27,20 @@ pub enum AppError {
     #[error("Prometheus error: {0}")]
     Prometheus(#[from] prometheusError),
 
-    #[error("ScyllaDB error: {0}")]
-    ScyllaDBInit(#[from] NewSessionError),
+    #[error("ScyllaDB new session error: {0}")]
+    ScyllaInit(#[from] NewSessionError),
 
-    #[error("ScyllaDB error: {0}")]
-    ScyllaDBExecute(#[from] ExecutionError),
+    #[error("ScyllaDB execution error: {0}")]
+    ScyllaExecute(#[from] ExecutionError),
+
+    #[error("ScyllaDB prepare error: {0}")]
+    ScyllaPrepare(#[from] PrepareError),
+
+    #[error("ScyllaDB rows result error: {0}")]
+    ScyllaRowsResult(#[from] IntoRowsResultError),
+
+    #[error("ScyllaDB first row error: {0}")]
+    ScyllaFirstRow(#[from] FirstRowError),
 }
 
 impl IntoResponse for AppError {

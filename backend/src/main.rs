@@ -1,13 +1,16 @@
 use crate::{
-    api::default_handler, error::AppError, metrics::metrics_handler, signals::shutdown_signal,
+    api::{authenticate_handler, default_handler},
+    error::AppError,
+    metrics::metrics_handler,
+    signals::shutdown_signal,
     state::AppState,
 };
 use axum::{
     Router,
     http::{Method, header::CONTENT_TYPE},
-    routing::get,
+    routing::{get, post},
 };
-use std::time::Duration;
+use std::{time::Duration, net::SocketAddr};
 use tokio::net::TcpListener;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::info;
@@ -15,7 +18,7 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 mod api;
 mod config;
-mod db;
+mod database;
 mod error;
 mod metrics;
 mod signals;
@@ -42,19 +45,19 @@ async fn main() -> Result<(), AppError> {
         .allow_origin(AllowOrigin::predicate(move |origin, _req| {
             origin.as_bytes() == origin_state.config.svelte_url.as_bytes()
         }))
-        .allow_methods([Method::GET, Method::OPTIONS])
+        .allow_methods([Method::GET, Method::OPTIONS, Method::POST])
         .allow_headers([CONTENT_TYPE])
         .max_age(Duration::from_secs(60 * 60));
 
     let app = Router::new()
-        .route("/login", get(default_handler))
-        .route("/signup", get(default_handler))
+        .route("/authenticate", post(authenticate_handler))
         .route("/verify-email", get(default_handler))
         .route("/post-item", get(default_handler))
         .route("/get-items", get(default_handler))
         .route("/metrics", get(metrics_handler))
         .layer(cors)
-        .with_state(state.clone());
+        .with_state(state.clone())
+        .into_make_service_with_connect_info::<SocketAddr>();
 
     let addr = format!("0.0.0.0:{}", state.config.rust_port);
     info!("Binding to {}", addr);
