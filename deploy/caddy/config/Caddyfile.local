@@ -4,6 +4,10 @@
 	}
 }
 {$CADDY_DOMAIN} {
+	handle_path /api/* {
+		reverse_proxy {$RUST_NAME}:{$RUST_PORT}
+	}
+
 	handle {
 		reverse_proxy {$SVELTE_NAME}:{$SVELTE_PORT}
 	}
