@@ -1,4 +1,24 @@
 services:
+  redis:
+    image: redis:8.0.2-alpine@sha256:48501c5ad00d5563bc30c075c7bcef41d7d98de3e9a1e6c752068c66f0a8463b
+    networks:
+      - main_net
+    volumes:
+      - ./redis_data:/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    logging:
+      driver: loki
+      options:
+        mode: non-blocking
+        loki-url: ${LOKI_URL}
+        loki-batch-size: "10"
+        loki-timeout: "10s"
+        loki-retries: "3"
+
   scylladb:
     image: scylladb/scylla:2025.1.2@sha256:84e914792c61a7703ff616bf6ee6d4becbcf68845221bd2458fcab10ef64302c
     networks:
@@ -30,7 +50,9 @@ services:
         condition: on-failure
         delay: 5s
     secrets:
-      - RUST_HASH_SALT
+      - RUST_FROM_EMAIL
+      - RUST_FROM_EMAIL_PASSWORD
+      - RUST_FROM_EMAIL_SERVER
     logging:
       driver: loki
       options:
@@ -43,6 +65,7 @@ services:
       - RUST_PORT=${RUST_PORT}
       - RUST_LOG=${RUST_LOG}
       - RUST_DB_URI=${RUST_DB_URI}
+      - RUST_REDIS_URL=${RUST_REDIS_URL}
       - SVELTE_URL=${SVELTE_URL}
 
   svelte:
@@ -93,7 +116,11 @@ services:
       - ./caddy/config/Caddyfile.local:/etc/caddy/Caddyfile
 
 secrets:
-  RUST_HASH_SALT:
+  RUST_FROM_EMAIL:
+    external: true
+  RUST_FROM_EMAIL_PASSWORD:
+    external: true
+  RUST_FROM_EMAIL_SERVER:
     external: true
 
 networks:
