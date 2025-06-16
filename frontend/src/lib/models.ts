@@ -1,6 +1,9 @@
+export type AccountAction = 'login' | 'signup'
+
 export type Account = {
 	email: string
 	password: string
+	action: AccountAction
 }
 
 export type Verification = {

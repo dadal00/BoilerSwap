@@ -4,7 +4,7 @@
 
 	let activeTab = $state('login')
 	let authenticationID: string = ''
-	let account: Account = { email: '', password: '' }
+	let account: Account = { email: '', password: '', action: 'signup' }
 	let confirmPassword: string = $state('')
 
 	function showTab(tab: string) {
@@ -12,10 +12,13 @@
 	}
 
 	async function login() {
+		account.action = 'login'
 		const response = await fetch(PUBLIC_BACKEND_URL + '/login')
 	}
 
 	async function signup() {
+		account.action = 'signup'
+
 		if (!/.+@purdue\.edu$/.test(account.email)) {
 			console.log('Signup failed: email must be a Purdue address')
 			return
@@ -43,7 +46,7 @@
 			}
 
 			authenticationID = await response.text()
-			// console.log(authenticationID)
+			console.log(authenticationID)
 		} catch (err) {
 			console.log('Signup failed: ', err)
 		}
