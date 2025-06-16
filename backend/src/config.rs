@@ -6,7 +6,9 @@ use tracing::{info, warn};
 pub struct Config {
     pub rust_port: u16,
     pub svelte_url: String,
-    pub hash_salt: String,
+    pub from_email: String,
+    pub from_email_server: String,
+    pub from_email_password: String,
 }
 
 impl Config {
@@ -25,16 +27,30 @@ impl Config {
             })
             .unwrap_or_else(|_| "http://localhost:5173".into());
 
-        let hash_salt = read_hash_salt()
+        let from_email = read_secret("RUST_FROM_EMAIL")
             .inspect_err(|_| {
-                info!("RUST_HASH_SALT not set, using default");
+                info!("RUST_FROM_EMAIL not set, using default");
             })
             .unwrap_or_else(|_| "WeAreInTroubleGoodnessGracious".into());
+
+        let from_email_server = read_secret("RUST_FROM_EMAIL_SERVER")
+            .inspect_err(|_| {
+                info!("RUST_FROM_EMAIL_SERVER not set, using default");
+            })
+            .unwrap_or_else(|_| "ohdear".into());
+
+        let from_email_password = read_secret("RUST_FROM_EMAIL_PASSWORD")
+            .inspect_err(|_| {
+                info!("RUST_FROM_EMAIL_PASSWORD not set, using default");
+            })
+            .unwrap_or_else(|_| "its so over".into());
 
         Ok(Self {
             rust_port,
             svelte_url,
-            hash_salt,
+            from_email,
+            from_email_server,
+            from_email_password,
         })
     }
 }
@@ -46,11 +62,12 @@ fn var(key: &str) -> Result<String, AppError> {
     })
 }
 
-fn read_hash_salt() -> Result<String, AppError> {
-    read_to_string("/run/secrets/RUST_HASH_SALT")
+fn read_secret(secret_name: &str) -> Result<String, AppError> {
+    let path = format!("/run/secrets/{}", secret_name);
+    read_to_string(&path)
         .map(|s| s.trim().to_string())
         .map_err(|e| {
-            warn!("Failed to read RUST_HASH_SALT from file: {}", e);
+            warn!("Failed to read {} from file: {}", secret_name, e);
             AppError::IO(e)
         })
 }

@@ -5,7 +5,6 @@ use scylla::{
 };
 use std::{env, sync::Arc};
 use tracing::warn;
-use uuid::Uuid;
 
 pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError> {
     let database_uri = env::var("RUST_DB_URI").unwrap_or_else(|_| {
@@ -27,9 +26,9 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
 
     database_session
         .query_unpaged(
-            "CREATE TABLE IF NOT EXISTS boiler_swap.user_by_email (
+            "CREATE TABLE IF NOT EXISTS boiler_swap.user_info (
                 email text,
-                user_id uuid,
+                password_hash text,
                 PRIMARY KEY(email)
             )",
             &[],
@@ -38,21 +37,10 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
 
     database_session
         .query_unpaged(
-            "CREATE TABLE IF NOT EXISTS boiler_swap.user_info (
-                user_id uuid,
-                password_hash text,
-                PRIMARY KEY(user_id)
-            )",
-            &[],
-        )
-        .await?;
-
-    database_session
-        .query_unpaged(
             "CREATE TABLE IF NOT EXISTS boiler_swap.product_by_user (
-                user_id uuid,
+                email text,
                 product_id uuid,
-                PRIMARY KEY(user_id, product_id)
+                PRIMARY KEY(email, product_id)
             )",
             &[],
         )
@@ -73,41 +61,28 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
         )
         .await?;
 
-    database_session
-        .query_unpaged(
-            "CREATE TABLE IF NOT EXISTS boiler_swap.user_sessions (
-                session_id uuid,
-                user_id uuid,
-                ip_address inet,
-                user_agent text,
-                PRIMARY KEY (session_id)
-            ) WITH default_time_to_live = 3600",
-            &[],
-        )
-        .await?;
-
     let database_queries = DatabaseQueries {
-        get_user_id: database_session
-            .prepare("SELECT user_id FROM boiler_swap.user_by_email WHERE email = ?")
+        get_user_info: database_session
+            .prepare("SELECT password_hash FROM boiler_swap.user_info WHERE email = ?")
             .await?,
     };
 
     Ok((Arc::new(database_session), database_queries))
 }
 
-pub async fn get_user(state: Arc<AppState>, email: &str) -> Result<Option<Uuid>, AppError> {
+pub async fn get_user(state: Arc<AppState>, email: &str) -> Result<Option<String>, AppError> {
     let fallback_page_state = PagingState::start();
     let (returned_rows, _) = state
         .database_session
         .execute_single_page(
-            &state.database_queries.get_user_id,
+            &state.database_queries.get_user_info,
             (email,),
             fallback_page_state,
         )
         .await?;
 
-    match returned_rows.into_rows_result()?.first_row::<(Uuid,)>() {
-        Ok((user_id,)) => Ok(Some(user_id)),
+    match returned_rows.into_rows_result()?.first_row::<(String,)>() {
+        Ok((password_hash,)) => Ok(Some(password_hash)),
         Err(RowsEmpty) => Ok(None),
         Err(e) => Err(e.into()),
     }

@@ -2,12 +2,19 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use lettre::{
+    address::AddressError, error::Error as lettreGeneralError,
+    transport::smtp::Error as lettreTransportError,
+};
 use prometheus::Error as prometheusError;
+use redis::RedisError;
 use scylla::errors::{
     ExecutionError, FirstRowError, IntoRowsResultError, NewSessionError, PrepareError,
 };
+use serde_json::Error as serdeJsonError;
 use std::{env::VarError, io::Error as IOError, string::FromUtf8Error};
 use thiserror::Error;
+use tokio::task::JoinError;
 use tracing::error;
 
 #[derive(Error, Debug)]
@@ -41,6 +48,24 @@ pub enum AppError {
 
     #[error("ScyllaDB first row error: {0}")]
     ScyllaFirstRow(#[from] FirstRowError),
+
+    #[error("Tokio join error: {0}")]
+    TokioJoin(#[from] JoinError),
+
+    #[error("Lettre transport error: {0}")]
+    LettreTransport(#[from] lettreTransportError),
+
+    #[error("Lettre address error: {0}")]
+    LettreAddress(#[from] AddressError),
+
+    #[error("Lettre general error: {0}")]
+    LettreGeneral(#[from] lettreGeneralError),
+
+    #[error("Redis error: {0}")]
+    Redis(#[from] RedisError),
+
+    #[error("SerdeJson error: {0}")]
+    ToJson(#[from] serdeJsonError),
 }
 
 impl IntoResponse for AppError {

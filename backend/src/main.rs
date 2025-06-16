@@ -21,6 +21,7 @@ mod config;
 mod database;
 mod error;
 mod metrics;
+mod redis;
 mod signals;
 mod state;
 
@@ -50,10 +51,10 @@ async fn main() -> Result<(), AppError> {
         .max_age(Duration::from_secs(60 * 60));
 
     let app = Router::new()
-        .route("/authenticate", post(authenticate_handler))
-        .route("/verify-email", get(default_handler))
-        .route("/post-item", get(default_handler))
-        .route("/get-items", get(default_handler))
+        .route("/api/authenticate", post(authenticate_handler))
+        .route("/api/verify-email", get(default_handler))
+        .route("/api/post-item", get(default_handler))
+        .route("/api/get-items", get(default_handler))
         .route("/metrics", get(metrics_handler))
         .layer(cors)
         .with_state(state.clone())

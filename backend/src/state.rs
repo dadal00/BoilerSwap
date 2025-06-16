@@ -1,41 +1,39 @@
 use crate::{
-    api::VerificationInfo, config::Config, database::init_database, error::AppError,
-    metrics::Metrics,
+    config::Config, database::init_database, error::AppError, metrics::Metrics, redis::init_redis,
 };
-use moka::future::Cache;
+use redis::aio::ConnectionManager;
 use scylla::{client::session::Session, statement::prepared::PreparedStatement};
-use std::{sync::Arc, time::Duration};
-use uuid::Uuid;
+use std::sync::Arc;
 
 pub struct AppState {
     pub config: Config,
     pub metrics: Metrics,
     pub database_session: Arc<Session>,
     pub database_queries: DatabaseQueries,
-    pub verification_map: Arc<Cache<Uuid, VerificationInfo>>,
+    pub redis_connection_manager: ConnectionManager,
 }
 
 pub struct DatabaseQueries {
-    pub get_user_id: PreparedStatement,
+    pub get_user_info: PreparedStatement,
 }
 
 impl AppState {
     pub async fn new() -> Result<Arc<Self>, AppError> {
+        let database_future = init_database();
+        let redis_future = init_redis();
+
         let config = Config::load()?;
         let metrics = Metrics::default();
-        let (database_session, database_queries) = init_database().await?;
-        let verification_map = Arc::new(
-            Cache::builder()
-                .time_to_live(Duration::from_secs(300))
-                .build(),
-        );
+
+        let redis_connection_manager = redis_future.await?;
+        let (database_session, database_queries) = database_future.await?;
 
         Ok(Arc::new(Self {
             config,
             metrics,
             database_session,
             database_queries,
-            verification_map,
+            redis_connection_manager,
         }))
     }
 }
