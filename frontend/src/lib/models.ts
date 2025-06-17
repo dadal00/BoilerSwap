@@ -30,3 +30,7 @@ export type Product = {
 	location: Location
 	description?: string
 }
+
+export type Token = {
+	token: string
+}
