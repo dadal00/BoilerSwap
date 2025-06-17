@@ -8,6 +8,7 @@ services:
     build:
       args:
         - PUBLIC_BACKEND_URL=${PUBLIC_BACKEND_URL}
+        - PRIVATE_BACKEND_URL=${PRIVATE_BACKEND_URL}
       context: ../frontend
     image: boiler_svelte:latest
 
