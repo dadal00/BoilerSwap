@@ -1,5 +1,5 @@
 use crate::{
-    api::{authenticate_handler, default_handler},
+    api::{api_cookie_check, authenticate_handler, default_handler, verify_handler},
     error::AppError,
     metrics::metrics_handler,
     signals::shutdown_signal,
@@ -8,6 +8,7 @@ use crate::{
 use axum::{
     Router,
     http::{Method, header::CONTENT_TYPE},
+    middleware,
     routing::{get, post},
 };
 use std::{net::SocketAddr, time::Duration};
@@ -52,10 +53,14 @@ async fn main() -> Result<(), AppError> {
 
     let app = Router::new()
         .route("/api/authenticate", post(authenticate_handler))
-        .route("/api/verify", get(default_handler))
+        .route("/api/verify", post(verify_handler))
         .route("/api/post-item", get(default_handler))
         .route("/api/get-items", get(default_handler))
         .route("/metrics", get(metrics_handler))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            api_cookie_check,
+        ))
         .layer(cors)
         .with_state(state.clone())
         .into_make_service_with_connect_info::<SocketAddr>();

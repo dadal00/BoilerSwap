@@ -1,14 +1,21 @@
-use crate::{AppError, database::get_user, state::AppState};
+use crate::{
+    AppError,
+    database::{get_user, insert_user},
+    redis::{insert_magic_link_token, insert_session, remove_magic_link_token},
+    state::AppState,
+};
 use argon2::{
     Algorithm::Argon2id, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version::V0x13, password_hash::SaltString,
 };
 use axum::{
     Json,
-    extract::{ConnectInfo, State},
-    http::{StatusCode, header::HeaderMap},
+    extract::{ConnectInfo, Request, State},
+    http::{HeaderValue, StatusCode, header::HeaderMap, header::SET_COOKIE},
+    middleware::Next,
     response::IntoResponse,
 };
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite::Strict};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
@@ -20,8 +27,10 @@ use redis::AsyncTypedCommands;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, sync::Arc};
+use time::Duration;
 use tokio::task::spawn_blocking;
 use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -38,12 +47,17 @@ pub struct Account {
     action: Action,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct RedisAccount {
-    email: String,
+    pub email: String,
     action: Action,
     #[serde(skip_serializing_if = "Option::is_none")]
-    password_hash: Option<String>,
+    pub password_hash: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Token {
+    token: String,
 }
 
 static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.+@purdue\.edu$").unwrap());
@@ -53,34 +67,89 @@ pub async fn default_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
     "Hello from Axum!"
 }
 
+pub async fn api_cookie_check(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    request: Request,
+    next: Next,
+) -> Result<impl IntoResponse, AppError> {
+    match CookieJar::from_headers(&headers).get("api_token") {
+        Some(api_token)
+            if state
+                .redis_connection_manager
+                .clone()
+                .get(format!("api_token:{}", &api_token))
+                .await?
+                .is_some() =>
+        {
+            let response = next.run(request).await;
+            Ok(response)
+        }
+        _ => Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response()),
+    }
+}
+
+pub async fn verify_handler(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<Token>,
+) -> Result<impl IntoResponse, AppError> {
+    let redis_account = match state
+        .redis_connection_manager
+        .clone()
+        .get(format!("magic_link_token:{}", payload.token))
+        .await?
+    {
+        Some(serialized) => {
+            let deserialized: RedisAccount = serde_json::from_str(&serialized)?;
+
+            remove_magic_link_token(state.clone(), &payload.token, &deserialized.email);
+
+            deserialized
+        }
+        None => {
+            return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+        }
+    };
+
+    if redis_account.action == Action::Signup && redis_account.password_hash.is_some() {
+        insert_user(state.clone(), redis_account.clone()).await?;
+    }
+
+    let (headers, session_id) = generate_cookie();
+
+    insert_session(state, &session_id, &redis_account.email).await?;
+
+    Ok((StatusCode::OK, headers).into_response())
+}
+
 pub async fn authenticate_handler(
     headers: HeaderMap,
     ConnectInfo(address): ConnectInfo<SocketAddr>,
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Account>,
 ) -> Result<impl IntoResponse, AppError> {
+    if payload.action == Action::Signup
+        && state
+            .redis_connection_manager
+            .clone()
+            .get(format!("email:{}", &payload.email))
+            .await?
+            .is_some()
+    {
+        return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+    }
+
     if let Err(e) = validate_account(&payload.email, &payload.password) {
         return Ok((StatusCode::BAD_REQUEST, e).into_response());
     }
-
-    /*
-    password is none
-    - login -> invalid
-    - signup -> valid proceed (magic link)
-    password is not none
-    - login -> check password
-        - not match -> invalid
-        - match -> valid proceed (magic link)
-    - signup -> valid proceed (email check, magic link)
-    */
 
     let redis_account = match get_user(state.clone(), &payload.email).await? {
         None => {
             if payload.action == Action::Login {
                 return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
             }
-            let password_hash = spawn_blocking(move || hash_password(&payload.password)).await??;
 
+            let password_hash = spawn_blocking(move || hash_password(&payload.password)).await??;
             RedisAccount {
                 email: payload.email.clone(),
                 action: payload.action.clone(),
@@ -103,40 +172,19 @@ pub async fn authenticate_handler(
             }
         }
     };
-
+    
     let magic_link_token = generate_magic_link_token();
-
-    let state_clone = state.clone();
-    let user_email = payload.email.clone();
-    let user_action = payload.action.clone();
-    let token = magic_link_token.clone();
-    tokio::spawn(async move {
-        if let Err(error) =
-            send_magic_link_email(state_clone, &user_email, &user_action, &token).await
-        {
-            match error {
-                AppError::LettreAddress(msg) => {
-                    debug!("Invalid email: {}", msg);
-                }
-                AppError::LettreTransport(msg) => {
-                    debug!("Transport error: {}", msg);
-                }
-                other => {
-                    warn!("Unexpected error: {:?}", other);
-                }
-            }
-        }
-    });
+    spawn_magic_link_task(
+        state.clone(),
+        payload.email.clone(),
+        payload.action.clone(),
+        magic_link_token.clone(),
+    );
 
     let serialized = serde_json::to_string(&redis_account)?;
-    let key = format!("magic_link_token:{}", magic_link_token);
-    state
-        .redis_connection_manager
-        .clone()
-        .set_ex(&key, serialized, 600)
-        .await?;
+    insert_magic_link_token(state, &magic_link_token, &serialized, &payload.email, 600).await?;
 
-    Ok((StatusCode::OK, "authentication_id".to_string()).into_response())
+    Ok((StatusCode::OK).into_response())
 }
 
 fn validate_account(email: &str, password: &str) -> Result<(), &'static str> {
@@ -210,4 +258,40 @@ async fn send_magic_link_email(
 
     mailer.send(email).await?;
     Ok(())
+}
+
+fn generate_cookie() -> (HeaderMap, String) {
+    let session_id = Uuid::new_v4().to_string();
+    let cookie = Cookie::build(("session_id", session_id.clone()))
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(Strict)
+        .max_age(Duration::hours(1));
+
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        SET_COOKIE,
+        HeaderValue::from_str(&cookie.to_string()).unwrap(),
+    );
+
+    (headers, session_id)
+}
+
+fn spawn_magic_link_task(state: Arc<AppState>, email: String, action: Action, token: String) {
+    tokio::spawn(async move {
+        if let Err(error) = send_magic_link_email(state, &email, &action, &token).await {
+            match error {
+                AppError::LettreAddress(msg) => {
+                    debug!("Invalid email: {}", msg);
+                }
+                AppError::LettreTransport(msg) => {
+                    debug!("Transport error: {}", msg);
+                }
+                other => {
+                    warn!("Unexpected error: {:?}", other);
+                }
+            }
+        }
+    });
 }

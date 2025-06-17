@@ -9,6 +9,7 @@ pub struct Config {
     pub from_email: String,
     pub from_email_server: String,
     pub from_email_password: String,
+    pub max_sessions: u8,
 }
 
 impl Config {
@@ -26,6 +27,14 @@ impl Config {
                 info!("SVELTE_URL not set, using default");
             })
             .unwrap_or_else(|_| "http://localhost:5173".into());
+
+        let max_sessions = var("RUST_MAX_SESSIONS")
+            .inspect_err(|_| {
+                info!("RUST_MAX_SESSIONS not set, using default");
+            })
+            .unwrap_or_else(|_| "2".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_MAX_SESSIONS value".into()))?;
 
         let from_email = read_secret("RUST_FROM_EMAIL")
             .inspect_err(|_| {
@@ -51,6 +60,7 @@ impl Config {
             from_email,
             from_email_server,
             from_email_password,
+            max_sessions,
         })
     }
 }

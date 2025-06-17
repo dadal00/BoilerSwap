@@ -1,8 +1,12 @@
 use crate::{
-    config::Config, database::init_database, error::AppError, metrics::Metrics, redis::init_redis,
+    config::Config,
+    database::{DatabaseQueries, init_database},
+    error::AppError,
+    metrics::Metrics,
+    redis::init_redis,
 };
 use redis::aio::ConnectionManager;
-use scylla::{client::session::Session, statement::prepared::PreparedStatement};
+use scylla::client::session::Session;
 use std::sync::Arc;
 
 pub struct AppState {
@@ -11,10 +15,6 @@ pub struct AppState {
     pub database_session: Arc<Session>,
     pub database_queries: DatabaseQueries,
     pub redis_connection_manager: ConnectionManager,
-}
-
-pub struct DatabaseQueries {
-    pub get_user_info: PreparedStatement,
 }
 
 impl AppState {
