@@ -52,7 +52,7 @@ async fn main() -> Result<(), AppError> {
 
     let app = Router::new()
         .route("/api/authenticate", post(authenticate_handler))
-        .route("/api/verify-email", get(default_handler))
+        .route("/api/verify", get(default_handler))
         .route("/api/post-item", get(default_handler))
         .route("/api/get-items", get(default_handler))
         .route("/metrics", get(metrics_handler))

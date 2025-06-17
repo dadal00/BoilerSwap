@@ -1,6 +1,7 @@
 use crate::{AppError, database::get_user, state::AppState};
 use argon2::{
-    Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, password_hash::SaltString,
+    Algorithm::Argon2id, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
+    Version::V0x13, password_hash::SaltString,
 };
 use axum::{
     Json,
@@ -24,6 +25,7 @@ use tracing::{debug, info, warn};
 
 #[derive(Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Clone)]
 pub enum Action {
     Login,
     Signup,
@@ -81,7 +83,7 @@ pub async fn authenticate_handler(
 
             RedisAccount {
                 email: payload.email.clone(),
-                action: payload.action,
+                action: payload.action.clone(),
                 password_hash: Some(password_hash),
             }
         }
@@ -96,7 +98,7 @@ pub async fn authenticate_handler(
 
             RedisAccount {
                 email: payload.email.clone(),
-                action: payload.action,
+                action: payload.action.clone(),
                 password_hash: None,
             }
         }
@@ -106,9 +108,12 @@ pub async fn authenticate_handler(
 
     let state_clone = state.clone();
     let user_email = payload.email.clone();
+    let user_action = payload.action.clone();
     let token = magic_link_token.clone();
     tokio::spawn(async move {
-        if let Err(error) = send_magic_link_email(state_clone, &user_email, &token).await {
+        if let Err(error) =
+            send_magic_link_email(state_clone, &user_email, &user_action, &token).await
+        {
             match error {
                 AppError::LettreAddress(msg) => {
                     debug!("Invalid email: {}", msg);
@@ -152,7 +157,7 @@ fn hash_password(password: &str) -> Result<String, AppError> {
         warn!("Failed to hash password: {}", e);
         AppError::Config(e.to_string())
     })?;
-    let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
+    let argon2 = Argon2::new(Argon2id, V0x13, params);
     let password_hash = argon2
         .hash_password(password.as_bytes(), &salt)
         .map_err(|e| {
@@ -182,6 +187,7 @@ fn generate_magic_link_token() -> String {
 async fn send_magic_link_email(
     state: Arc<AppState>,
     user_email: &str,
+    user_action: &Action,
     magic_link_token: &str,
 ) -> Result<(), AppError> {
     let email = Message::builder()
