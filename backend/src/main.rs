@@ -1,5 +1,5 @@
 use crate::{
-    api::{api_cookie_check, authenticate_handler, default_handler, verify_handler},
+    api::{api_token_check, authenticate_handler, default_handler, verify_handler},
     error::AppError,
     metrics::metrics_handler,
     signals::shutdown_signal,
@@ -59,7 +59,7 @@ async fn main() -> Result<(), AppError> {
         .route("/metrics", get(metrics_handler))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            api_cookie_check,
+            api_token_check,
         ))
         .layer(cors)
         .with_state(state.clone())

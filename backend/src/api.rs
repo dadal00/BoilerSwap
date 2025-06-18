@@ -11,11 +11,14 @@ use argon2::{
 use axum::{
     Json,
     extract::{ConnectInfo, Request, State},
-    http::{HeaderValue, StatusCode, header::HeaderMap, header::SET_COOKIE},
+    http::{
+        StatusCode,
+        header::{AUTHORIZATION, HeaderMap},
+    },
     middleware::Next,
     response::IntoResponse,
 };
-use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite::Strict};
+use axum_extra::extract::CookieJar;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
@@ -27,7 +30,6 @@ use redis::AsyncTypedCommands;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, sync::Arc};
-use time::Duration;
 use tokio::task::spawn_blocking;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -67,26 +69,17 @@ pub async fn default_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
     "Hello from Axum!"
 }
 
-pub async fn api_cookie_check(
+pub async fn api_token_check(
     headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     request: Request,
     next: Next,
 ) -> Result<impl IntoResponse, AppError> {
-    match CookieJar::from_headers(&headers).get("api_token") {
-        Some(api_token)
-            if state
-                .redis_connection_manager
-                .clone()
-                .get(format!("api_token:{}", &api_token))
-                .await?
-                .is_some() =>
-        {
-            let response = next.run(request).await;
-            Ok(response)
-        }
-        _ => Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response()),
+    if validate_api_token(headers, &state.config.api_token) {
+        return Ok(next.run(request).await);
     }
+
+    Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response())
 }
 
 pub async fn verify_handler(
@@ -102,7 +95,7 @@ pub async fn verify_handler(
         Some(serialized) => {
             let deserialized: RedisAccount = serde_json::from_str(&serialized)?;
 
-            remove_magic_link_token(state.clone(), &payload.token, &deserialized.email);
+            remove_magic_link_token(state.clone(), &payload.token, &deserialized.email).await?;
 
             deserialized
         }
@@ -115,11 +108,10 @@ pub async fn verify_handler(
         insert_user(state.clone(), redis_account.clone()).await?;
     }
 
-    let (headers, session_id) = generate_cookie();
-
+    let session_id = Uuid::new_v4().to_string();
     insert_session(state, &session_id, &redis_account.email).await?;
 
-    Ok((StatusCode::OK, headers).into_response())
+    Ok((StatusCode::OK, session_id).into_response())
 }
 
 pub async fn authenticate_handler(
@@ -172,7 +164,7 @@ pub async fn authenticate_handler(
             }
         }
     };
-    
+
     let magic_link_token = generate_magic_link_token();
     spawn_magic_link_task(
         state.clone(),
@@ -260,24 +252,6 @@ async fn send_magic_link_email(
     Ok(())
 }
 
-fn generate_cookie() -> (HeaderMap, String) {
-    let session_id = Uuid::new_v4().to_string();
-    let cookie = Cookie::build(("session_id", session_id.clone()))
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .same_site(Strict)
-        .max_age(Duration::hours(1));
-
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        SET_COOKIE,
-        HeaderValue::from_str(&cookie.to_string()).unwrap(),
-    );
-
-    (headers, session_id)
-}
-
 fn spawn_magic_link_task(state: Arc<AppState>, email: String, action: Action, token: String) {
     tokio::spawn(async move {
         if let Err(error) = send_magic_link_email(state, &email, &action, &token).await {
@@ -294,4 +268,27 @@ fn spawn_magic_link_task(state: Arc<AppState>, email: String, action: Action, to
             }
         }
     });
+}
+
+fn validate_api_token(headers: HeaderMap, real_api_token: &str) -> bool {
+    if let Some(api_header) = headers.get(AUTHORIZATION) {
+        if api_header
+            .to_str()
+            .is_ok_and(|api_token| api_token == real_api_token)
+        {
+            return true;
+        }
+    }
+    if let Some(api_token) = CookieJar::from_headers(&headers).get("api_token") {
+        if api_token
+            .to_string()
+            .split_once('=')
+            .map(|x| x.1)
+            .unwrap_or("")
+            == real_api_token
+        {
+            return true;
+        }
+    }
+    false
 }

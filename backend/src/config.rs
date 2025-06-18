@@ -10,6 +10,7 @@ pub struct Config {
     pub from_email_server: String,
     pub from_email_password: String,
     pub max_sessions: u8,
+    pub api_token: String,
 }
 
 impl Config {
@@ -54,6 +55,12 @@ impl Config {
             })
             .unwrap_or_else(|_| "its so over".into());
 
+        let api_token = read_secret("API_TOKEN")
+            .inspect_err(|_| {
+                info!("API_TOKEN not set, using default");
+            })
+            .unwrap_or_else(|_| "its so over".into());
+
         Ok(Self {
             rust_port,
             svelte_url,
@@ -61,6 +68,7 @@ impl Config {
             from_email_server,
             from_email_password,
             max_sessions,
+            api_token,
         })
     }
 }
