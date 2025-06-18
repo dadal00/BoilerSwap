@@ -53,6 +53,7 @@ services:
       - RUST_FROM_EMAIL
       - RUST_FROM_EMAIL_PASSWORD
       - RUST_FROM_EMAIL_SERVER
+      - API_TOKEN
     logging:
       driver: loki
       options:
@@ -66,12 +67,16 @@ services:
       - RUST_LOG=${RUST_LOG}
       - RUST_DB_URI=${RUST_DB_URI}
       - RUST_REDIS_URL=${RUST_REDIS_URL}
+      - RUST_MAX_SESSIONS=${RUST_MAX_SESSIONS}
       - SVELTE_URL=${SVELTE_URL}
 
   svelte:
     image: boiler_svelte:latest
     networks:
       - main_net
+    secrets:
+      - API_TOKEN
+    command: sh -c "export API_TOKEN=$$(cat /run/secrets/API_TOKEN) && node build"
     deploy:
       mode: global
       restart_policy:
@@ -121,6 +126,8 @@ secrets:
   RUST_FROM_EMAIL_PASSWORD:
     external: true
   RUST_FROM_EMAIL_SERVER:
+    external: true
+  API_TOKEN:
     external: true
 
 networks:
