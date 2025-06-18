@@ -13,7 +13,31 @@
 
 	async function login() {
 		account.action = 'login'
-		const response = await fetch(PUBLIC_BACKEND_URL + '/login')
+
+		if (!/.+@purdue\.edu$/.test(account.email)) {
+			console.log('Signup failed: email must be a Purdue address')
+			return
+		}
+		if (account.password === '') {
+			console.log('Signup failed: invalid password')
+			return
+		}
+
+		try {
+			const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(account)
+			})
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`)
+			}
+		} catch (err) {
+			console.log('Signup failed: ', err)
+		}
 	}
 
 	async function signup() {
@@ -44,9 +68,6 @@
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`)
 			}
-
-			authenticationID = await response.text()
-			console.log(authenticationID)
 		} catch (err) {
 			console.log('Signup failed: ', err)
 		}
@@ -115,13 +136,18 @@
 							type="email"
 							placeholder="yourname@purdue.edu"
 							class="w-full px-4 py-2 border rounded-lg"
+							bind:value={account.email}
 						/>
 					</label>
 				</div>
 				<div>
 					<label class="block text-sm font-medium mb-2">
 						Password
-						<input type="password" class="w-full px-4 py-2 border rounded-lg" />
+						<input
+							type="password"
+							class="w-full px-4 py-2 border rounded-lg"
+							bind:value={account.password}
+						/>
 					</label>
 				</div>
 				<button

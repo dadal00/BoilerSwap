@@ -120,13 +120,12 @@ pub async fn authenticate_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Account>,
 ) -> Result<impl IntoResponse, AppError> {
-    if payload.action == Action::Signup
-        && state
-            .redis_connection_manager
-            .clone()
-            .get(format!("email:{}", &payload.email))
-            .await?
-            .is_some()
+    if state
+        .redis_connection_manager
+        .clone()
+        .get(format!("email:{}", &payload.email))
+        .await?
+        .is_some()
     {
         return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
     }
