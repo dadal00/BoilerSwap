@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
 	import { PUBLIC_BACKEND_URL } from '$env/static/public'
+	import { appState } from '$lib/AppState.svelte'
 
 	let auth_code: string = $state('')
 
 	async function verify() {
-		if (!/^\d+$/.test(auth_code)) {
-			console.log('Verification failed: only numbers')
+		if (!/^\d+$/.test(auth_code) || auth_code.length != 6) {
+			console.log('Verification failed: only 6 numbers')
 			return
 		}
 
@@ -24,6 +25,7 @@
 				throw new Error(`HTTP error! status: ${response.status}`)
 			}
 
+			appState.setSignedIn(true)
 			goto('/browse')
 		} catch (err) {
 			console.log('verification failed: ', err)

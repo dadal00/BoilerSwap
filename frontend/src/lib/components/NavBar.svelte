@@ -1,4 +1,12 @@
-<script lang="ts"></script>
+<script lang="ts">
+	import { appState } from '$lib/AppState.svelte'
+
+	function signout() {
+		if (appState.isSignedIn()) {
+			appState.setSignedIn(false)
+		}
+	}
+</script>
 
 <header class="border-b bg-white sticky top-0 z-50">
 	<div class="container mx-auto px-4 py-4">
@@ -23,7 +31,9 @@
 			<div class="flex items-center space-x-3">
 				<a
 					href="auth"
-					class="border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded">Sign In</a
+					onclick={signout}
+					class="border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded"
+					>Sign {appState.isSignedIn() ? 'Out' : 'In'}</a
 				>
 				<a
 					href="post"

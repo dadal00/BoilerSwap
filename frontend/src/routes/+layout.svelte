@@ -3,8 +3,11 @@
 	import NavBar from '$lib/components/NavBar.svelte'
 	import Footer from '$lib/components/Footer.svelte'
 	import { afterNavigate } from '$app/navigation'
+	import { appState } from '$lib/AppState.svelte'
 
-	let { children } = $props()
+	let { children, data } = $props()
+
+	appState.setSignedIn(data.signedIn)
 
 	let currentRoute = $state('/')
 	afterNavigate((navigation) => {
