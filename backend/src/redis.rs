@@ -65,9 +65,9 @@ pub async fn insert_session(
     Ok(())
 }
 
-pub async fn insert_magic_link_token(
+pub async fn insert_auth_id(
     state: Arc<AppState>,
-    token: &str,
+    auth_id: &str,
     serialized: &str,
     email: &str,
     ttl: u16,
@@ -75,11 +75,7 @@ pub async fn insert_magic_link_token(
     state
         .redis_connection_manager
         .clone()
-        .set_ex(
-            format!("magic_link_token:{}", token),
-            serialized,
-            ttl.into(),
-        )
+        .set_ex(format!("auth_id:{}", auth_id), serialized, ttl.into())
         .await?;
 
     state
@@ -91,15 +87,15 @@ pub async fn insert_magic_link_token(
     Ok(())
 }
 
-pub async fn remove_magic_link_token(
+pub async fn remove_auth_id(
     state: Arc<AppState>,
-    token: &str,
+    auth_id: &str,
     email: &str,
 ) -> Result<(), AppError> {
     state
         .redis_connection_manager
         .clone()
-        .del(format!("magic_link_token:{}", token))
+        .del(format!("auth_id:{}", auth_id))
         .await?;
     state
         .redis_connection_manager

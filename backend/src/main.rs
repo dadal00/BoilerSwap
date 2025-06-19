@@ -1,5 +1,5 @@
 use crate::{
-    api::{api_token_check, authenticate_handler, default_handler, verify_handler},
+    api::{api_token_check, authenticate_handler, default_handler, delete_handler, verify_handler},
     error::AppError,
     metrics::metrics_handler,
     signals::shutdown_signal,
@@ -9,7 +9,7 @@ use axum::{
     Router,
     http::{Method, header::CONTENT_TYPE},
     middleware,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use std::{net::SocketAddr, time::Duration};
 use tokio::net::TcpListener;
@@ -47,13 +47,14 @@ async fn main() -> Result<(), AppError> {
         .allow_origin(AllowOrigin::predicate(move |origin, _req| {
             origin.as_bytes() == origin_state.config.svelte_url.as_bytes()
         }))
-        .allow_methods([Method::GET, Method::OPTIONS, Method::POST])
+        .allow_methods([Method::GET, Method::OPTIONS, Method::POST, Method::DELETE])
         .allow_headers([CONTENT_TYPE])
         .max_age(Duration::from_secs(60 * 60));
 
     let app = Router::new()
         .route("/api/authenticate", post(authenticate_handler))
         .route("/api/verify", post(verify_handler))
+        .route("/api/delete", delete(delete_handler))
         .route("/api/post-item", get(default_handler))
         .route("/api/get-items", get(default_handler))
         .route("/metrics", get(metrics_handler))

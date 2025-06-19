@@ -1,7 +1,7 @@
 use crate::{
     AppError,
     database::{get_user, insert_user},
-    redis::{insert_magic_link_token, insert_session, remove_magic_link_token},
+    redis::{insert_auth_id, insert_session, remove_auth_id},
     state::AppState,
 };
 use argon2::{
@@ -12,20 +12,20 @@ use axum::{
     Json,
     extract::{ConnectInfo, Request, State},
     http::{
-        StatusCode,
-        header::{AUTHORIZATION, HeaderMap},
+        HeaderValue, StatusCode,
+        header::{AUTHORIZATION, HeaderMap, SET_COOKIE},
     },
     middleware::Next,
     response::IntoResponse,
 };
 use axum_extra::extract::CookieJar;
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use cookie::{Cookie, SameSite::Strict, time::Duration};
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     transport::smtp::authentication::Credentials,
 };
 use once_cell::sync::Lazy;
-use rand::{RngCore, rngs::OsRng};
+use rand::{Rng, rngs::OsRng, thread_rng};
 use redis::AsyncTypedCommands;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -53,6 +53,7 @@ pub struct Account {
 pub struct RedisAccount {
     pub email: String,
     action: Action,
+    auth_code: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password_hash: Option<String>,
 }
@@ -63,6 +64,7 @@ pub struct Token {
 }
 
 static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.+@purdue\.edu$").unwrap());
+static AUTH_CODE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d+$").unwrap());
 
 pub async fn default_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     info!("Received!");
@@ -82,20 +84,44 @@ pub async fn api_token_check(
     Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response())
 }
 
-pub async fn verify_handler(
+pub async fn delete_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Token>,
 ) -> Result<impl IntoResponse, AppError> {
+    state
+        .redis_connection_manager
+        .clone()
+        .del(format!("session_id:{}", payload.token))
+        .await?;
+
+    Ok((StatusCode::OK).into_response())
+}
+
+pub async fn verify_handler(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<Token>,
+) -> Result<impl IntoResponse, AppError> {
+    if payload.token.len() != 6 || !AUTH_CODE_REGEX.is_match(&payload.token) {
+        return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+    }
+
+    let auth_id = get_cookie(&headers, "auth_id");
+
     let redis_account = match state
         .redis_connection_manager
         .clone()
-        .get(format!("magic_link_token:{}", payload.token))
+        .get(format!("auth_id:{}", auth_id))
         .await?
     {
         Some(serialized) => {
             let deserialized: RedisAccount = serde_json::from_str(&serialized)?;
 
-            remove_magic_link_token(state.clone(), &payload.token, &deserialized.email).await?;
+            if payload.token != deserialized.auth_code {
+                return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+            }
+
+            remove_auth_id(state.clone(), &auth_id, &deserialized.email).await?;
 
             deserialized
         }
@@ -104,14 +130,14 @@ pub async fn verify_handler(
         }
     };
 
-    if redis_account.action == Action::Signup && redis_account.password_hash.is_some() {
+    if redis_account.action == Action::Signup {
         insert_user(state.clone(), redis_account.clone()).await?;
     }
 
     let session_id = Uuid::new_v4().to_string();
     insert_session(state, &session_id, &redis_account.email).await?;
 
-    Ok((StatusCode::OK, session_id).into_response())
+    Ok((StatusCode::OK, generate_cookie("session_id", &session_id)).into_response())
 }
 
 pub async fn authenticate_handler(
@@ -144,6 +170,7 @@ pub async fn authenticate_handler(
             RedisAccount {
                 email: payload.email.clone(),
                 action: payload.action.clone(),
+                auth_code: generate_auth_code().clone(),
                 password_hash: Some(password_hash),
             }
         }
@@ -155,30 +182,38 @@ pub async fn authenticate_handler(
             {
                 return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
             }
+            if payload.action == Action::Signup {
+                return Ok((StatusCode::UNAUTHORIZED, "Account already exists").into_response());
+            }
 
             RedisAccount {
                 email: payload.email.clone(),
                 action: payload.action.clone(),
+                auth_code: generate_auth_code().clone(),
                 password_hash: None,
             }
         }
     };
 
-    let magic_link_token = generate_magic_link_token();
-    spawn_magic_link_task(
+    spawn_auth_code_task(
         state.clone(),
         payload.email.clone(),
         payload.action.clone(),
-        magic_link_token.clone(),
+        redis_account.auth_code.clone(),
     );
 
     let serialized = serde_json::to_string(&redis_account)?;
-    insert_magic_link_token(state, &magic_link_token, &serialized, &payload.email, 600).await?;
+    let auth_id = Uuid::new_v4().to_string();
+    insert_auth_id(state, &auth_id, &serialized, &payload.email, 600).await?;
 
-    Ok((StatusCode::OK).into_response())
+    Ok((StatusCode::OK, generate_cookie("auth_id", &auth_id)).into_response())
 }
 
 fn validate_account(email: &str, password: &str) -> Result<(), &'static str> {
+    if email.len() > 100 || password.len() > 100 {
+        return Err("Too many chars");
+    }
+
     if !EMAIL_REGEX.is_match(email) {
         return Err("Email must be a Purdue address");
     }
@@ -217,26 +252,22 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError
         .is_ok())
 }
 
-fn generate_magic_link_token() -> String {
-    let mut bytes = [0u8; 32];
-    OsRng.fill_bytes(&mut bytes);
-    URL_SAFE_NO_PAD.encode(bytes)
+fn generate_auth_code() -> String {
+    let mut rng = thread_rng();
+    format!("{:06}", rng.gen_range(0..1_000_000))
 }
 
-async fn send_magic_link_email(
+async fn send_auth_code_email(
     state: Arc<AppState>,
     user_email: &str,
     user_action: &Action,
-    magic_link_token: &str,
+    auth_code: &str,
 ) -> Result<(), AppError> {
     let email = Message::builder()
         .from(format!("BoilerSwap <{}>", state.config.from_email).parse()?)
         .to(user_email.parse()?)
-        .subject("BoilerSwap Link")
-        .body(format!(
-            "Click this link to login:\n\n{}/auth/verify?token={}",
-            state.config.svelte_url, magic_link_token
-        ))?;
+        .subject("BoilerSwap Code")
+        .body(format!("Your code is {}", auth_code))?;
 
     let credentials = Credentials::new(
         state.config.from_email.to_string(),
@@ -251,9 +282,9 @@ async fn send_magic_link_email(
     Ok(())
 }
 
-fn spawn_magic_link_task(state: Arc<AppState>, email: String, action: Action, token: String) {
+fn spawn_auth_code_task(state: Arc<AppState>, email: String, action: Action, token: String) {
     tokio::spawn(async move {
-        if let Err(error) = send_magic_link_email(state, &email, &action, &token).await {
+        if let Err(error) = send_auth_code_email(state, &email, &action, &token).await {
             match error {
                 AppError::LettreAddress(msg) => {
                     debug!("Invalid email: {}", msg);
@@ -278,16 +309,37 @@ fn validate_api_token(headers: HeaderMap, real_api_token: &str) -> bool {
             return true;
         }
     }
-    if let Some(api_token) = CookieJar::from_headers(&headers).get("api_token") {
-        if api_token
+    if get_cookie(&headers, "api_token") == real_api_token {
+        return true;
+    }
+    false
+}
+
+fn generate_cookie(key: &str, value: &str) -> HeaderMap {
+    let cookie = Cookie::build((key, value))
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(Strict)
+        .max_age(Duration::hours(1));
+
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        SET_COOKIE,
+        HeaderValue::from_str(&cookie.to_string()).unwrap(),
+    );
+
+    headers
+}
+
+fn get_cookie(headers: &HeaderMap, key: &str) -> String {
+    if let Some(api_token) = CookieJar::from_headers(headers).get(key) {
+        return api_token
             .to_string()
             .split_once('=')
             .map(|x| x.1)
             .unwrap_or("")
-            == real_api_token
-        {
-            return true;
-        }
-    }
-    false
+            .to_string();
+    };
+    "".to_string()
 }

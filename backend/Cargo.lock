@@ -226,7 +226,7 @@ dependencies = [
  "argon2",
  "axum 0.7.9",
  "axum-extra",
- "base64",
+ "cookie",
  "lettre",
  "once_cell",
  "prometheus",
