@@ -1,5 +1,4 @@
 <script lang="ts">
-	// Footer component - no props needed
 </script>
 
 <footer class="bg-gray-800 text-white py-12 px-6">

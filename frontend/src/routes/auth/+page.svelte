@@ -1,9 +1,9 @@
 <script lang="ts">
+	import { goto } from '$app/navigation'
 	import { PUBLIC_BACKEND_URL } from '$env/static/public'
 	import type { Account } from '$lib/models'
 
 	let activeTab = $state('login')
-	let authenticationID: string = ''
 	let account: Account = { email: '', password: '', action: 'signup' }
 	let confirmPassword: string = $state('')
 
@@ -35,8 +35,10 @@
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`)
 			}
+
+			goto('/auth/verify')
 		} catch (err) {
-			console.log('Signup failed: ', err)
+			console.log('Login failed: ', err)
 		}
 	}
 
@@ -68,6 +70,7 @@
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`)
 			}
+			goto('/auth/verify')
 		} catch (err) {
 			console.log('Signup failed: ', err)
 		}
