@@ -26,9 +26,36 @@ pub async fn init_redis() -> Result<ConnectionManager, AppError> {
     Ok(connection_manager)
 }
 
+pub async fn delete_all_sessions(
+    state: Arc<AppState>,
+    key: &str,
+    key_secondary: &str,
+    email: &str,
+) -> Result<(), AppError> {
+    let mut pipe = redis::pipe();
+
+    for session_id in state
+        .redis_connection_manager
+        .clone()
+        .zrange(format!("{}:{}", key_secondary, email), 0, -1)
+        .await?
+    {
+        pipe.del(format!("{}:{}", key, session_id)).ignore();
+    }
+
+    pipe.del(format!("{}:{}", key_secondary, email)).ignore();
+
+    pipe.query_async::<()>(&mut state.redis_connection_manager.clone())
+        .await?;
+
+    Ok(())
+}
+
 pub async fn insert_session(
     state: Arc<AppState>,
+    key: &str,
     session_id: &str,
+    key_secondary: &str,
     email: &str,
 ) -> Result<(), AppError> {
     let now = SystemTime::now()
@@ -39,69 +66,103 @@ pub async fn insert_session(
     state
         .redis_connection_manager
         .clone()
-        .set_ex(format!("session_id:{}", session_id), 1, 3600)
+        .set_ex(format!("{}:{}", key, session_id), 1, 3600)
         .await?;
 
     state
         .redis_connection_manager
         .clone()
-        .zadd(format!("sessions:{}", email), session_id, now)
+        .zadd(format!("{}:{}", key_secondary, email), session_id, now)
         .await?;
 
     if state
         .redis_connection_manager
         .clone()
-        .zcard(format!("sessions:{}", email))
+        .zcard(format!("{}:{}", key_secondary, email))
         .await?
         > state.config.max_sessions.into()
     {
         state
             .redis_connection_manager
             .clone()
-            .zremrangebyrank(format!("sessions:{}", email), 0, 0)
+            .zremrangebyrank(format!("{}:{}", key_secondary, email), 0, 0)
             .await?;
     }
 
     Ok(())
 }
 
-pub async fn insert_auth_id(
+pub async fn insert_id(
     state: Arc<AppState>,
-    auth_id: &str,
+    key: &str,
+    id: &str,
     serialized: &str,
+    key_secondary: &str,
     email: &str,
     ttl: u16,
 ) -> Result<(), AppError> {
     state
         .redis_connection_manager
         .clone()
-        .set_ex(format!("auth_id:{}", auth_id), serialized, ttl.into())
+        .set_ex(format!("{}:{}", key, id), serialized, ttl.into())
         .await?;
 
     state
         .redis_connection_manager
         .clone()
-        .set_ex(format!("email:{}", email), 1, ttl.into())
+        .pset_ex(format!("{}:{}", key_secondary, email), 1, 500)
         .await?;
 
     Ok(())
 }
 
-pub async fn remove_auth_id(
+pub async fn remove_id(
     state: Arc<AppState>,
-    auth_id: &str,
+    key: &str,
+    id: &str,
+    key_secondary: &str,
     email: &str,
 ) -> Result<(), AppError> {
     state
         .redis_connection_manager
         .clone()
-        .del(format!("auth_id:{}", auth_id))
+        .del(format!("{}:{}", key, id))
         .await?;
     state
         .redis_connection_manager
         .clone()
-        .del(format!("email:{}", email))
+        .del(format!("{}:{}", key_secondary, email))
         .await?;
 
     Ok(())
+}
+
+pub async fn is_temporarily_locked(
+    state: Arc<AppState>,
+    key: &str,
+    id: &str,
+    ttl: i64,
+) -> Result<bool, AppError> {
+    let result: Option<String> = redis::cmd("SET")
+        .arg(format!("{}:{}", key, id))
+        .arg("1")
+        .arg("NX")
+        .arg("EX")
+        .arg(ttl)
+        .query_async(&mut state.redis_connection_manager.clone())
+        .await?;
+
+    Ok(result.is_none())
+}
+
+pub async fn try_get(
+    state: Arc<AppState>,
+    key: &str,
+    email: &str,
+) -> Result<Option<String>, AppError> {
+    Ok(state
+        .redis_connection_manager
+        .clone()
+        .get(format!("{}:{}", key, email))
+        .await?)
 }

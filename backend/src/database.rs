@@ -10,6 +10,9 @@ use tracing::warn;
 pub struct DatabaseQueries {
     pub get_user: PreparedStatement,
     pub insert_user: PreparedStatement,
+    pub check_lock: PreparedStatement,
+    pub update_lock: PreparedStatement,
+    pub unlock_account: PreparedStatement,
 }
 
 pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError> {
@@ -35,6 +38,7 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
             "CREATE TABLE IF NOT EXISTS boiler_swap.users (
                 email text,
                 password_hash text,
+                locked boolean,
                 PRIMARY KEY(email)
             )",
             &[],
@@ -58,17 +62,29 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
 
     let database_queries = DatabaseQueries {
         get_user: database_session
-            .prepare("SELECT password_hash FROM boiler_swap.users WHERE email = ?")
+            .prepare("SELECT password_hash, locked FROM boiler_swap.users WHERE email = ?")
             .await?,
         insert_user: database_session
-            .prepare("INSERT INTO boiler_swap.users (email, password_hash) VALUES (?, ?) USING TTL 126144000")
+            .prepare("INSERT INTO boiler_swap.users (email, password_hash, locked) VALUES (?, ?, ?) USING TTL 126144000")
+            .await?,
+        check_lock: database_session
+            .prepare("SELECT locked FROM boiler_swap.users WHERE email = ?")
+            .await?,
+        update_lock: database_session
+            .prepare("UPDATE boiler_swap.users SET locked = ? WHERE email = ?")
+            .await?,
+        unlock_account: database_session
+            .prepare("UPDATE boiler_swap.users SET locked = false, password_hash = ? WHERE email = ?")
             .await?,
     };
 
     Ok((Arc::new(database_session), database_queries))
 }
 
-pub async fn get_user(state: Arc<AppState>, email: &str) -> Result<Option<String>, AppError> {
+pub async fn get_user(
+    state: Arc<AppState>,
+    email: &str,
+) -> Result<Option<(String, bool)>, AppError> {
     let fallback_page_state = PagingState::start();
     let (returned_rows, _) = state
         .database_session
@@ -79,8 +95,11 @@ pub async fn get_user(state: Arc<AppState>, email: &str) -> Result<Option<String
         )
         .await?;
 
-    match returned_rows.into_rows_result()?.first_row::<(String,)>() {
-        Ok((password_hash,)) => Ok(Some(password_hash)),
+    match returned_rows
+        .into_rows_result()?
+        .first_row::<(String, bool)>()
+    {
+        Ok((password_hash, locked)) => Ok(Some((password_hash, locked))),
         Err(RowsEmpty) => Ok(None),
         Err(e) => Err(e.into()),
     }
@@ -92,7 +111,57 @@ pub async fn insert_user(state: Arc<AppState>, account: RedisAccount) -> Result<
         .database_session
         .execute_single_page(
             &state.database_queries.insert_user,
-            (account.email, account.password_hash),
+            (account.email, account.password_hash, false),
+            fallback_page_state,
+        )
+        .await?;
+
+    Ok(())
+}
+
+pub async fn check_lock(state: Arc<AppState>, email: &str) -> Result<Option<bool>, AppError> {
+    let fallback_page_state = PagingState::start();
+    let (returned_rows, _) = state
+        .database_session
+        .execute_single_page(
+            &state.database_queries.check_lock,
+            (email,),
+            fallback_page_state,
+        )
+        .await?;
+
+    match returned_rows.into_rows_result()?.first_row::<(bool,)>() {
+        Ok((locked,)) => Ok(Some(locked)),
+        Err(RowsEmpty) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
+pub async fn update_lock(state: Arc<AppState>, email: &str, lock: bool) -> Result<(), AppError> {
+    let fallback_page_state = PagingState::start();
+    state
+        .database_session
+        .execute_single_page(
+            &state.database_queries.update_lock,
+            (lock, email),
+            fallback_page_state,
+        )
+        .await?;
+
+    Ok(())
+}
+
+pub async fn unlock_account(
+    state: Arc<AppState>,
+    email: &str,
+    password_hash: &str,
+) -> Result<(), AppError> {
+    let fallback_page_state = PagingState::start();
+    state
+        .database_session
+        .execute_single_page(
+            &state.database_queries.unlock_account,
+            (password_hash, email),
             fallback_page_state,
         )
         .await?;

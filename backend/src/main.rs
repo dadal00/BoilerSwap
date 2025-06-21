@@ -1,5 +1,8 @@
 use crate::{
-    api::{api_token_check, authenticate_handler, default_handler, delete_handler, verify_handler},
+    api::{
+        api_token_check, authenticate_handler, default_handler, delete_handler, forgot_handler,
+        verify_handler,
+    },
     error::AppError,
     metrics::metrics_handler,
     signals::shutdown_signal,
@@ -55,6 +58,7 @@ async fn main() -> Result<(), AppError> {
         .route("/api/authenticate", post(authenticate_handler))
         .route("/api/verify", post(verify_handler))
         .route("/api/delete", delete(delete_handler))
+        .route("/api/forgot", post(forgot_handler))
         .route("/api/post-item", get(default_handler))
         .route("/api/get-items", get(default_handler))
         .route("/metrics", get(metrics_handler))
