@@ -11,6 +11,31 @@
 		activeTab = tab
 	}
 
+	async function forgot() {
+		if (!/.+@purdue\.edu$/.test(account.email)) {
+			console.log('Recovery failed: email must be a Purdue address')
+			return
+		}
+
+		try {
+			const response = await fetch(PUBLIC_BACKEND_URL + '/forgot', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ token: account.email })
+			})
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`)
+			}
+
+			goto('/auth/verify/forget')
+		} catch (err) {
+			console.log('Login failed: ', err)
+		}
+	}
+
 	async function login() {
 		account.action = 'login'
 
@@ -234,12 +259,13 @@
 							type="email"
 							placeholder="yourname@purdue.edu"
 							class="w-full px-4 py-2 border rounded-lg"
+							bind:value={account.email}
 						/>
 					</label>
 				</div>
 				<button
 					class="w-full bg-yellow-400 text-gray-800 hover:bg-yellow-500 py-2 rounded-lg transition-colors"
-					>Send Reset Link</button
+					onclick={forgot}>Send Reset Link</button
 				>
 				<div class="text-center">
 					<button onclick={() => showTab('login')} class="text-yellow-600 hover:underline text-sm">

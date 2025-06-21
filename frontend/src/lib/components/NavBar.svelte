@@ -1,8 +1,18 @@
 <script lang="ts">
 	import { appState } from '$lib/AppState.svelte'
+	import { PUBLIC_BACKEND_URL } from '$env/static/public'
 
-	function signout() {
+	async function signout() {
 		if (appState.isSignedIn()) {
+			const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
+				method: 'DELETE',
+				credentials: 'include'
+			})
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`)
+			}
+
 			appState.setSignedIn(false)
 		}
 	}
