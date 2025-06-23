@@ -106,8 +106,6 @@ pub async fn insert_id(
     key: &str,
     id: &str,
     serialized: &str,
-    key_secondary: &str,
-    email: &str,
     ttl: u16,
 ) -> Result<(), AppError> {
     state
@@ -116,31 +114,14 @@ pub async fn insert_id(
         .set_ex(format!("{}:{}", key, id), serialized, ttl.into())
         .await?;
 
-    state
-        .redis_connection_manager
-        .clone()
-        .pset_ex(format!("{}:{}", key_secondary, email), 1, 500)
-        .await?;
-
     Ok(())
 }
 
-pub async fn remove_id(
-    state: Arc<AppState>,
-    key: &str,
-    id: &str,
-    key_secondary: &str,
-    email: &str,
-) -> Result<(), AppError> {
+pub async fn remove_id(state: Arc<AppState>, key: &str, id: &str) -> Result<(), AppError> {
     state
         .redis_connection_manager
         .clone()
         .del(format!("{}:{}", key, id))
-        .await?;
-    state
-        .redis_connection_manager
-        .clone()
-        .del(format!("{}:{}", key_secondary, email))
         .await?;
 
     Ok(())
@@ -182,12 +163,11 @@ pub async fn get_redis_account(
     redis_action: &RedisAction,
     id: &str,
     code: &str,
-    redis_action_secondary: &RedisAction,
-    redis_action_tertiary: RedisAction,
+    redis_action_secondary: RedisAction,
 ) -> Result<Option<RedisAccount>, AppError> {
     match result {
         Some(serialized) => {
-            if is_temporarily_locked(state.clone(), redis_action_tertiary.as_ref(), id, 1).await? {
+            if is_temporarily_locked(state.clone(), redis_action_secondary.as_ref(), id, 1).await? {
                 return Ok(None);
             }
 
@@ -209,14 +189,7 @@ pub async fn get_redis_account(
                 return Ok(None);
             }
 
-            remove_id(
-                state.clone(),
-                redis_action.as_ref(),
-                id,
-                redis_action_secondary.as_ref(),
-                &deserialized.email,
-            )
-            .await?;
+            remove_id(state.clone(), redis_action.as_ref(), id).await?;
 
             if locked {
                 return Ok(None);

@@ -16,12 +16,11 @@ pub static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.+@purdue\.edu$
 pub async fn verify_token(
     state: Arc<AppState>,
     headers: HeaderMap,
-) -> Result<Option<(Option<String>, RedisAction, RedisAction, String)>, AppError> {
+) -> Result<Option<(Option<String>, RedisAction, String)>, AppError> {
     if let Some(id) = get_cookie(&headers, RedisAction::Forgot.as_ref()) {
         return Ok(Some((
             try_get(state.clone(), RedisAction::Forgot.as_ref(), &id).await?,
             RedisAction::Forgot,
-            RedisAction::Recovering,
             id,
         )));
     }
@@ -29,7 +28,6 @@ pub async fn verify_token(
         return Ok(Some((
             try_get(state.clone(), RedisAction::Auth.as_ref(), &id).await?,
             RedisAction::Auth,
-            RedisAction::Authenticating,
             id,
         )));
     }
@@ -37,7 +35,6 @@ pub async fn verify_token(
         return Ok(Some((
             try_get(state.clone(), RedisAction::Update.as_ref(), &id).await?,
             RedisAction::Update,
-            RedisAction::Updating,
             id,
         )));
     }

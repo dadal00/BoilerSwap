@@ -1,7 +1,7 @@
 use super::{
     lock::{freeze_account, unfreeze_account},
     models::{Account, Action, RedisAccount, RedisAction, Token},
-    redis::{create_redis_account, get_redis_account, try_get},
+    redis::{create_redis_account, get_redis_account},
     sessions::{create_session, create_temporary_session, generate_cookie, get_cookie},
     twofactor::{CODE_REGEX, generate_code},
     verify::{
@@ -61,7 +61,6 @@ pub async fn forgot_handler(
             &None,
             &redis_account,
             RedisAction::Forgot,
-            RedisAction::Recovering,
             600,
         )
         .await?,
@@ -95,13 +94,12 @@ pub async fn verify_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Token>,
 ) -> Result<impl IntoResponse, AppError> {
-    let (result, redis_action, redis_action_secondary, id) =
-        match verify_token(state.clone(), headers).await? {
-            Some((a, b, c, d)) => (a, b, c, d),
-            None => {
-                return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
-            }
-        };
+    let (result, redis_action, id) = match verify_token(state.clone(), headers).await? {
+        Some((a, b, c)) => (a, b, c),
+        None => {
+            return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+        }
+    };
 
     if redis_action == RedisAction::Update && validate_password(&payload.token).is_err() {
         return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
@@ -119,7 +117,6 @@ pub async fn verify_handler(
         &redis_action,
         &id,
         &payload.token,
-        &redis_action_secondary,
         RedisAction::LockedTemporary,
     )
     .await?
@@ -140,7 +137,6 @@ pub async fn verify_handler(
                 &result,
                 &redis_account,
                 RedisAction::Update,
-                RedisAction::Updating,
                 600,
             )
             .await?,
@@ -172,15 +168,7 @@ pub async fn authenticate_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Account>,
 ) -> Result<impl IntoResponse, AppError> {
-    if payload.action == Action::Forgot
-        || try_get(
-            state.clone(),
-            RedisAction::Authenticating.as_ref(),
-            &payload.email,
-        )
-        .await?
-        .is_some()
-    {
+    if payload.action == Action::Forgot {
         return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
     }
 
@@ -204,15 +192,8 @@ pub async fn authenticate_handler(
 
     Ok((
         StatusCode::OK,
-        create_temporary_session(
-            state.clone(),
-            &None,
-            &redis_account,
-            RedisAction::Auth,
-            RedisAction::Authenticating,
-            600,
-        )
-        .await?,
+        create_temporary_session(state.clone(), &None, &redis_account, RedisAction::Auth, 600)
+            .await?,
     )
         .into_response())
 }

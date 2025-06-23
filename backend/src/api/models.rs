@@ -37,14 +37,8 @@ pub enum RedisAction {
     #[strum(serialize = "auth_id")]
     Auth,
 
-    #[strum(serialize = "authenticating")]
-    Authenticating,
-
     #[strum(serialize = "forgot_id")]
     Forgot,
-
-    #[strum(serialize = "recovering")]
-    Recovering,
 
     #[strum(serialize = "locked_timestamp")]
     LockedTime,
@@ -57,9 +51,6 @@ pub enum RedisAction {
 
     #[strum(serialize = "update")]
     Update,
-
-    #[strum(serialize = "updating")]
-    Updating,
 
     #[strum(serialize = "sessions")]
     SessionStore,

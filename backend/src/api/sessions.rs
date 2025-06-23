@@ -75,7 +75,6 @@ pub async fn create_temporary_session(
     result: &Option<String>,
     redis_account: &RedisAccount,
     redis_action: RedisAction,
-    redis_action_secondary: RedisAction,
     ttl: i64,
 ) -> Result<HeaderMap, AppError> {
     if redis_action != RedisAction::Update {
@@ -98,8 +97,6 @@ pub async fn create_temporary_session(
         redis_action.as_ref(),
         &id,
         serialized,
-        redis_action_secondary.as_ref(),
-        &redis_account.email,
         ttl.try_into().unwrap(),
     )
     .await?;
