@@ -1,9 +1,11 @@
 use crate::{
+    api::{
+        database::{DatabaseQueries, init_database},
+        redis::init_redis,
+    },
     config::Config,
-    database::{DatabaseQueries, init_database},
     error::AppError,
     metrics::Metrics,
-    redis::init_redis,
 };
 use redis::aio::ConnectionManager;
 use scylla::client::session::Session;

@@ -1,4 +1,5 @@
-use crate::{api::RedisAccount, error::AppError, state::AppState};
+use super::models::RedisAccount;
+use crate::{error::AppError, state::AppState};
 use scylla::{
     client::{session::Session, session_builder::SessionBuilder},
     response::{PagingState, query_result::FirstRowError::RowsEmpty},

@@ -1,4 +1,12 @@
+use super::{
+    database::get_user,
+    lock::check_locks,
+    models::{Action, RedisAccount, RedisAction},
+    twofactor::generate_code,
+    verify::{hash_password, verify_password},
+};
 use crate::{AppError, AppState};
+use chrono::Utc;
 use redis::{
     AsyncTypedCommands, Client,
     aio::{ConnectionManager, ConnectionManagerConfig},
@@ -8,6 +16,7 @@ use std::{
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use tokio::task::spawn_blocking;
 use tracing::warn;
 
 pub async fn init_redis() -> Result<ConnectionManager, AppError> {
@@ -165,4 +174,104 @@ pub async fn try_get(
         .clone()
         .get(format!("{}:{}", key, email))
         .await?)
+}
+
+pub async fn get_redis_account(
+    state: Arc<AppState>,
+    result: &Option<String>,
+    redis_action: &RedisAction,
+    id: &str,
+    code: &str,
+    redis_action_secondary: &RedisAction,
+    redis_action_tertiary: RedisAction,
+) -> Result<Option<RedisAccount>, AppError> {
+    match result {
+        Some(serialized) => {
+            if is_temporarily_locked(state.clone(), redis_action_tertiary.as_ref(), id, 1).await? {
+                return Ok(None);
+            }
+
+            let deserialized: RedisAccount = serde_json::from_str(serialized)?;
+
+            let locked = match redis_action {
+                RedisAction::Auth => {
+                    check_locks(
+                        state.clone(),
+                        &deserialized.email,
+                        deserialized.issued_timestamp.expect("auth account"),
+                    )
+                    .await?
+                }
+                _ => false,
+            };
+
+            if !locked && *redis_action != RedisAction::Update && code != deserialized.code {
+                return Ok(None);
+            }
+
+            remove_id(
+                state.clone(),
+                redis_action.as_ref(),
+                id,
+                redis_action_secondary.as_ref(),
+                &deserialized.email,
+            )
+            .await?;
+
+            if locked {
+                return Ok(None);
+            }
+
+            Ok(Some(deserialized))
+        }
+        None => Ok(None),
+    }
+}
+
+pub async fn create_redis_account(
+    state: Arc<AppState>,
+    action: Action,
+    email: &str,
+    password: &str,
+) -> Result<Option<RedisAccount>, AppError> {
+    match get_user(state.clone(), email).await? {
+        None => {
+            if action == Action::Login {
+                return Ok(None);
+            }
+
+            let password_owned = password.to_owned();
+
+            let password_hash = spawn_blocking(move || hash_password(&password_owned)).await??;
+
+            Ok(Some(RedisAccount {
+                email: email.to_string(),
+                action: action.clone(),
+                code: generate_code().clone(),
+                issued_timestamp: Some(Utc::now().timestamp_millis()),
+                password_hash: Some(password_hash),
+            }))
+        }
+        Some((hash, locked)) => {
+            let plaintext = password.to_owned();
+
+            let hash = hash.to_owned();
+
+            if action == Action::Signup
+                || locked
+                || (action == Action::Login
+                    && !spawn_blocking(move || verify_password(&plaintext, &hash)).await??)
+            {
+                return Ok(None);
+            }
+
+            Ok(Some(RedisAccount {
+                email: email.to_string(),
+                action: action.clone(),
+                code: generate_code().clone(),
+                issued_timestamp: Some(Utc::now().timestamp_millis()),
+                password_hash: None,
+            }))
+        }
+    }
 }

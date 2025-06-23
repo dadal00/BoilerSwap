@@ -1,5 +1,5 @@
 use crate::{
-    api::{
+    api::handlers::{
         api_token_check, authenticate_handler, default_handler, delete_handler, forgot_handler,
         verify_handler,
     },
@@ -22,10 +22,8 @@ use tracing_subscriber::{EnvFilter, fmt};
 
 mod api;
 mod config;
-mod database;
 mod error;
 mod metrics;
-mod redis;
 mod signals;
 mod state;
 
