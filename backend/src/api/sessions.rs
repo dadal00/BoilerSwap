@@ -75,7 +75,6 @@ pub async fn create_temporary_session(
     result: &Option<String>,
     redis_account: &RedisAccount,
     redis_action: RedisAction,
-    ttl: i64,
 ) -> Result<HeaderMap, AppError> {
     if redis_action != RedisAction::Update {
         spawn_code_task(
@@ -93,15 +92,19 @@ pub async fn create_temporary_session(
     let id = Uuid::new_v4().to_string();
 
     insert_id(
-        state,
+        state.clone(),
         redis_action.as_ref(),
         &id,
         serialized,
-        ttl.try_into().unwrap(),
+        state.config.temporary_session_duration_seconds,
     )
     .await?;
 
-    Ok(generate_cookie(redis_action.as_ref(), &id, ttl))
+    Ok(generate_cookie(
+        redis_action.as_ref(),
+        &id,
+        state.config.temporary_session_duration_seconds.into(),
+    ))
 }
 
 pub async fn create_session(
@@ -109,7 +112,6 @@ pub async fn create_session(
     redis_account: &RedisAccount,
     redis_action: RedisAction,
     redis_action_secondary: RedisAction,
-    ttl: i64,
 ) -> Result<HeaderMap, AppError> {
     if redis_account.action == Action::Signup {
         insert_user(state.clone(), redis_account.clone()).await?;
@@ -118,7 +120,7 @@ pub async fn create_session(
     let session_id = Uuid::new_v4().to_string();
 
     insert_session(
-        state,
+        state.clone(),
         redis_action.as_ref(),
         &session_id,
         redis_action_secondary.as_ref(),
@@ -126,5 +128,9 @@ pub async fn create_session(
     )
     .await?;
 
-    Ok(generate_cookie(redis_action.as_ref(), &session_id, ttl))
+    Ok(generate_cookie(
+        redis_action.as_ref(),
+        &session_id,
+        state.config.session_duration_seconds.into(),
+    ))
 }

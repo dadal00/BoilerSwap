@@ -54,4 +54,10 @@ pub enum RedisAction {
 
     #[strum(serialize = "sessions")]
     SessionStore,
+
+    #[strum(serialize = "verify_lock")]
+    LockedVerify,
+
+    #[strum(serialize = "auth_lock")]
+    LockedAuth,
 }

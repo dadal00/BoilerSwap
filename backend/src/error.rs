@@ -12,7 +12,7 @@ use scylla::errors::{
     ExecutionError, FirstRowError, IntoRowsResultError, NewSessionError, PrepareError,
 };
 use serde_json::Error as serdeJsonError;
-use std::{env::VarError, io::Error as IOError, string::FromUtf8Error};
+use std::{env::VarError, io::Error as IOError, num::ParseIntError, string::FromUtf8Error};
 use thiserror::Error;
 use tokio::task::JoinError;
 use tracing::error;
@@ -66,6 +66,9 @@ pub enum AppError {
 
     #[error("SerdeJson error: {0}")]
     ToJson(#[from] serdeJsonError),
+
+    #[error("ParseInt error: {0}")]
+    ToInt(#[from] ParseIntError),
 }
 
 impl IntoResponse for AppError {

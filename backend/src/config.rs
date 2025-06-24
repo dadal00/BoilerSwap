@@ -11,6 +11,12 @@ pub struct Config {
     pub from_email_password: String,
     pub max_sessions: u8,
     pub api_token: String,
+    pub auth_max_attempts: u8,
+    pub auth_lock_duration_seconds: u16,
+    pub verify_max_attempts: u8,
+    pub verify_lock_duration_seconds: u16,
+    pub temporary_session_duration_seconds: u16,
+    pub session_duration_seconds: u16,
 }
 
 impl Config {
@@ -36,6 +42,56 @@ impl Config {
             .unwrap_or_else(|_| "2".into())
             .parse()
             .map_err(|_| AppError::Config("Invalid RUST_MAX_SESSIONS value".into()))?;
+
+        let auth_lock_duration_seconds = var("RUST_AUTH_LOCK_DURATION_SECS")
+            .inspect_err(|_| {
+                info!("RUST_AUTH_LOCK_DURATION_SECS not set, using default");
+            })
+            .unwrap_or_else(|_| "1800".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_AUTH_LOCK_DURATION_SECS value".into()))?;
+
+        let auth_max_attempts = var("RUST_AUTH_MAX_ATTEMPTS")
+            .inspect_err(|_| {
+                info!("RUST_AUTH_MAX_ATTEMPTS not set, using default");
+            })
+            .unwrap_or_else(|_| "15".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_AUTH_MAX_ATTEMPTS value".into()))?;
+
+        let verify_lock_duration_seconds = var("RUST_VERIFY_LOCK_DURATION_SECS")
+            .inspect_err(|_| {
+                info!("RUST_VERIFY_LOCK_DURATION_SECS not set, using default");
+            })
+            .unwrap_or_else(|_| "600".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_VERIFY_LOCK_DURATION_SECS value".into()))?;
+
+        let verify_max_attempts = var("RUST_VERIFY_MAX_ATTEMPTS")
+            .inspect_err(|_| {
+                info!("RUST_VERIFY_MAX_ATTEMPTS not set, using default");
+            })
+            .unwrap_or_else(|_| "3".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_VERIFY_MAX_ATTEMPTS value".into()))?;
+
+        let temporary_session_duration_seconds = var("RUST_TEMP_SESSION_DURATION_SECS")
+            .inspect_err(|_| {
+                info!("RUST_TEMP_SESSION_DURATION_SECS not set, using default");
+            })
+            .unwrap_or_else(|_| "600".into())
+            .parse()
+            .map_err(|_| {
+                AppError::Config("Invalid RUST_TEMP_SESSION_DURATION_SECS value".into())
+            })?;
+
+        let session_duration_seconds = var("RUST_SESSION_DURATION_SECS")
+            .inspect_err(|_| {
+                info!("RUST_SESSION_DURATION_SECS not set, using default");
+            })
+            .unwrap_or_else(|_| "3600".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_SESSION_DURATION_SECS value".into()))?;
 
         let from_email = read_secret("RUST_FROM_EMAIL")
             .inspect_err(|_| {
@@ -69,6 +125,12 @@ impl Config {
             from_email_password,
             max_sessions,
             api_token,
+            auth_max_attempts,
+            auth_lock_duration_seconds,
+            verify_max_attempts,
+            verify_lock_duration_seconds,
+            temporary_session_duration_seconds,
+            session_duration_seconds,
         })
     }
 }

@@ -5,4 +5,5 @@ pub mod models;
 pub mod redis;
 pub mod sessions;
 pub mod twofactor;
+pub mod utilities;
 pub mod verify;

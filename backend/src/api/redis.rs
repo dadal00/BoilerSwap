@@ -7,8 +7,9 @@ use super::{
 };
 use crate::{AppError, AppState};
 use chrono::Utc;
+use once_cell::sync::Lazy;
 use redis::{
-    AsyncTypedCommands, Client,
+    AsyncTypedCommands, Client, Script,
     aio::{ConnectionManager, ConnectionManagerConfig},
 };
 use std::{
@@ -17,7 +18,18 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::task::spawn_blocking;
-use tracing::warn;
+use tracing::{info, warn};
+
+static FAILED_ATTEMPTS_SCRIPT: Lazy<Script> = Lazy::new(|| {
+    Script::new(
+        r#"
+        local attempts = redis.call("INCR", KEYS[1])
+        if attempts <= tonumber(ARGV[2]) then
+            redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
+        end
+    "#,
+    )
+});
 
 pub async fn init_redis() -> Result<ConnectionManager, AppError> {
     let redis_url = env::var("RUST_REDIS_URL").unwrap_or_else(|_| {
@@ -164,6 +176,7 @@ pub async fn get_redis_account(
     id: &str,
     code: &str,
     redis_action_secondary: RedisAction,
+    failed_verify_key: &str,
 ) -> Result<Option<RedisAccount>, AppError> {
     match result {
         Some(serialized) => {
@@ -172,6 +185,16 @@ pub async fn get_redis_account(
             }
 
             let deserialized: RedisAccount = serde_json::from_str(serialized)?;
+            info!("Before!");
+            if let Some(attempts) =
+                try_get(state.clone(), failed_verify_key, &deserialized.email).await?
+            {
+                if attempts.parse::<u8>()? >= state.config.verify_max_attempts {
+                    info!("Denied!");
+                    return Ok(None);
+                }
+            }
+            info!("After!");
 
             let locked = match redis_action {
                 RedisAction::Auth => {
@@ -186,6 +209,15 @@ pub async fn get_redis_account(
             };
 
             if !locked && *redis_action != RedisAction::Update && code != deserialized.code {
+                info!("Incremented!");
+                incr_failed_attempts(
+                    state.clone(),
+                    failed_verify_key,
+                    &deserialized.email,
+                    &state.config.verify_lock_duration_seconds,
+                    &state.config.verify_max_attempts,
+                )
+                .await?;
                 return Ok(None);
             }
 
@@ -206,6 +238,7 @@ pub async fn create_redis_account(
     action: Action,
     email: &str,
     password: &str,
+    failed_auth_key: &str,
 ) -> Result<Option<RedisAccount>, AppError> {
     match get_user(state.clone(), email).await? {
         None => {
@@ -230,11 +263,21 @@ pub async fn create_redis_account(
 
             let hash = hash.to_owned();
 
-            if action == Action::Signup
-                || locked
-                || (action == Action::Login
-                    && !spawn_blocking(move || verify_password(&plaintext, &hash)).await??)
+            if action == Action::Signup || locked {
+                return Ok(None);
+            }
+
+            if action == Action::Login
+                && !spawn_blocking(move || verify_password(&plaintext, &hash)).await??
             {
+                incr_failed_attempts(
+                    state.clone(),
+                    failed_auth_key,
+                    email,
+                    &state.config.auth_lock_duration_seconds,
+                    &state.config.auth_max_attempts,
+                )
+                .await?;
                 return Ok(None);
             }
 
@@ -247,4 +290,21 @@ pub async fn create_redis_account(
             }))
         }
     }
+}
+
+pub async fn incr_failed_attempts(
+    state: Arc<AppState>,
+    key: &str,
+    email: &str,
+    locked_duration_seconds: &u16,
+    max_attempts: &u8,
+) -> Result<(), AppError> {
+    let _count: () = FAILED_ATTEMPTS_SCRIPT
+        .key(format!("{}:{}", key, email))
+        .arg(locked_duration_seconds)
+        .arg(max_attempts)
+        .invoke_async(&mut state.redis_connection_manager.clone())
+        .await?;
+
+    Ok(())
 }
