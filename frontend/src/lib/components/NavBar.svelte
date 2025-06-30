@@ -1,21 +1,7 @@
 <script lang="ts">
 	import { appState } from '$lib/AppState.svelte'
-	import { PUBLIC_BACKEND_URL } from '$env/static/public'
-
-	async function signout() {
-		if (appState.isSignedIn()) {
-			const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
-				method: 'DELETE',
-				credentials: 'include'
-			})
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
-			}
-
-			appState.setSignedIn(false)
-		}
-	}
+	import { signout } from '$lib/auth'
+	import { Status } from '$lib/models'
 </script>
 
 <header class="border-b bg-white sticky top-0 z-50">
@@ -43,7 +29,7 @@
 					href="auth"
 					onclick={signout}
 					class="border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded"
-					>Sign {appState.isSignedIn() ? 'Out' : 'In'}</a
+					>Sign {appState.getStatus(Status.isSignedIn) ? 'Out' : 'In'}</a
 				>
 				<a
 					href="post"

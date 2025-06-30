@@ -4,10 +4,11 @@
 	import Footer from '$lib/components/Footer.svelte'
 	import { afterNavigate } from '$app/navigation'
 	import { appState } from '$lib/AppState.svelte'
+	import { Status } from '$lib/models'
 
 	let { children, data } = $props()
 
-	appState.setSignedIn(data.signedIn)
+	appState.setStatus(Status.isSignedIn, data.signedIn)
 
 	let currentRoute = $state('/')
 	afterNavigate((navigation) => {

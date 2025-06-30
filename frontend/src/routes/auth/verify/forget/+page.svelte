@@ -1,37 +1,37 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
-	import { PUBLIC_BACKEND_URL } from '$env/static/public'
+	import { PUBLIC_TEMP_SESSION_DURATION_SECS } from '$env/static/public'
+	import { appState } from '$lib/AppState.svelte'
+	import { Status } from '$lib/models'
+	import { onDestroy, onMount } from 'svelte'
+	import { verify_forget } from '$lib/auth'
 
 	let auth_code: string = $state('')
+	let timer: number | null = null
 
-	async function verify_forget() {
-		if (!/^\d+$/.test(auth_code) || auth_code.length != 6) {
-			console.log('Verification failed: only 6 numbers')
-			return
+	onMount(() => {
+		if (!appState.getStatus(Status.isVerifyingForgot)) {
+			goto('/browse')
 		}
 
-		try {
-			const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				credentials: 'include',
-				body: JSON.stringify({ token: auth_code })
-			})
+		timer = setTimeout(() => {
+			appState.setStatus(Status.isVerifyingForgot, false)
+		}, PUBLIC_TEMP_SESSION_DURATION_SECS * 1000)
+	})
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
-			}
-
-			goto('/auth/verify/update')
-		} catch (err) {
-			console.log('verification failed: ', err)
+	$effect(() => {
+		if (!appState.getStatus(Status.isVerifyingForgot)) {
+			goto('/browse')
 		}
-	}
+	})
+
+	onDestroy(() => {
+		appState.setStatus(Status.isVerifyingForgot, false)
+		clearTimeout(timer!)
+	})
 </script>
 
-<form onsubmit={verify_forget} class="space-y-2">
+<form onsubmit={() => verify_forget(auth_code)} class="space-y-2">
 	<input
 		type="text"
 		bind:value={auth_code}

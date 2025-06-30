@@ -1,39 +1,37 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
-	import { PUBLIC_BACKEND_URL } from '$env/static/public'
+	import { PUBLIC_TEMP_SESSION_DURATION_SECS } from '$env/static/public'
 	import { appState } from '$lib/AppState.svelte'
+	import { Status } from '$lib/models'
+	import { onDestroy, onMount } from 'svelte'
+	import { update } from '$lib/auth'
 
 	let new_password: string = $state('')
+	let timer: number | null = null
 
-	async function update() {
-		if (new_password === '' || new_password.length > 100) {
-			console.log('Invalid password')
-			return
-		}
-
-		try {
-			const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				credentials: 'include',
-				body: JSON.stringify({ token: new_password })
-			})
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
-			}
-
-			appState.setSignedIn(true)
+	onMount(() => {
+		if (!appState.getStatus(Status.isVerifyingUpdate)) {
 			goto('/browse')
-		} catch (err) {
-			console.log('verification failed: ', err)
 		}
-	}
+
+		timer = setTimeout(() => {
+			appState.setStatus(Status.isVerifyingUpdate, false)
+		}, PUBLIC_TEMP_SESSION_DURATION_SECS * 1000)
+	})
+
+	$effect(() => {
+		if (!appState.getStatus(Status.isVerifyingUpdate)) {
+			goto('/browse')
+		}
+	})
+
+	onDestroy(() => {
+		appState.setStatus(Status.isVerifyingUpdate, false)
+		clearTimeout(timer!)
+	})
 </script>
 
-<form onsubmit={update} class="space-y-2">
+<form onsubmit={() => update(new_password)} class="space-y-2">
 	<input
 		type="text"
 		bind:value={new_password}

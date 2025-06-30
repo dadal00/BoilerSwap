@@ -30,3 +30,16 @@ export type Product = {
 	location: Location
 	description?: string
 }
+
+export enum Status {
+	isSignedIn,
+	isVerifying,
+	isVerifyingForgot,
+	isVerifyingUpdate
+}
+
+export enum Attempt {
+	authAttempts,
+	verifyAttempts,
+	lastAttempt
+}

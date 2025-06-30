@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation'
-	import { PUBLIC_BACKEND_URL } from '$env/static/public'
-	import type { Account } from '$lib/models'
+	import { type Account } from '$lib/models'
+	import { login, signup, forgot } from '$lib/auth'
 
 	let activeTab = $state('login')
 	let account: Account = { email: '', password: '', action: 'signup' }
@@ -9,96 +8,6 @@
 
 	function showTab(tab: string) {
 		activeTab = tab
-	}
-
-	async function forgot() {
-		if (!/.+@purdue\.edu$/.test(account.email)) {
-			console.log('Recovery failed: email must be a Purdue address')
-			return
-		}
-
-		try {
-			const response = await fetch(PUBLIC_BACKEND_URL + '/forgot', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ token: account.email })
-			})
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
-			}
-
-			goto('/auth/verify/forget')
-		} catch (err) {
-			console.log('Login failed: ', err)
-		}
-	}
-
-	async function login() {
-		account.action = 'login'
-
-		if (!/.+@purdue\.edu$/.test(account.email)) {
-			console.log('Signup failed: email must be a Purdue address')
-			return
-		}
-		if (account.password === '') {
-			console.log('Signup failed: invalid password')
-			return
-		}
-
-		try {
-			const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(account)
-			})
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
-			}
-
-			goto('/auth/verify')
-		} catch (err) {
-			console.log('Login failed: ', err)
-		}
-	}
-
-	async function signup() {
-		account.action = 'signup'
-
-		if (!/.+@purdue\.edu$/.test(account.email)) {
-			console.log('Signup failed: email must be a Purdue address')
-			return
-		}
-		if (account.password === '') {
-			console.log('Signup failed: invalid password')
-			return
-		}
-		if (account.password !== confirmPassword) {
-			console.log('Signup failed: passwords do not match')
-			return
-		}
-
-		try {
-			const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(account)
-			})
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`)
-			}
-			goto('/auth/verify')
-		} catch (err) {
-			console.log('Signup failed: ', err)
-		}
 	}
 </script>
 
@@ -180,7 +89,7 @@
 				</div>
 				<button
 					class="w-full bg-yellow-400 text-gray-800 hover:bg-yellow-500 py-2 rounded-lg transition-colors"
-					onclick={login}
+					onclick={() => login(account)}
 				>
 					Login
 				</button>
@@ -236,7 +145,7 @@
 				</div>
 				<button
 					class="w-full bg-yellow-400 text-gray-800 hover:bg-yellow-500 py-2 rounded-lg transition-colors"
-					onclick={signup}
+					onclick={() => signup(account, confirmPassword)}
 				>
 					Create Account
 				</button>
@@ -265,7 +174,7 @@
 				</div>
 				<button
 					class="w-full bg-yellow-400 text-gray-800 hover:bg-yellow-500 py-2 rounded-lg transition-colors"
-					onclick={forgot}>Send Reset Link</button
+					onclick={() => forgot(account.email)}>Send Reset Link</button
 				>
 				<div class="text-center">
 					<button onclick={() => showTab('login')} class="text-yellow-600 hover:underline text-sm">
