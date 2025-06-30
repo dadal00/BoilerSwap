@@ -18,7 +18,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::task::spawn_blocking;
-use tracing::{info, warn};
+use tracing::warn;
 
 static FAILED_ATTEMPTS_SCRIPT: Lazy<Script> = Lazy::new(|| {
     Script::new(
@@ -185,16 +185,13 @@ pub async fn get_redis_account(
             }
 
             let deserialized: RedisAccount = serde_json::from_str(serialized)?;
-            info!("Before!");
             if let Some(attempts) =
                 try_get(state.clone(), failed_verify_key, &deserialized.email).await?
             {
                 if attempts.parse::<u8>()? >= state.config.verify_max_attempts {
-                    info!("Denied!");
                     return Ok(None);
                 }
             }
-            info!("After!");
 
             let locked = match redis_action {
                 RedisAction::Auth => {
@@ -209,7 +206,6 @@ pub async fn get_redis_account(
             };
 
             if !locked && *redis_action != RedisAction::Update && code != deserialized.code {
-                info!("Incremented!");
                 incr_failed_attempts(
                     state.clone(),
                     failed_verify_key,

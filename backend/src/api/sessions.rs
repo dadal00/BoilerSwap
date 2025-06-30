@@ -75,12 +75,14 @@ pub async fn create_temporary_session(
     result: &Option<String>,
     redis_account: &RedisAccount,
     redis_action: RedisAction,
+    forgot_key: &Option<String>,
 ) -> Result<HeaderMap, AppError> {
     if redis_action != RedisAction::Update {
         spawn_code_task(
             state.clone(),
             redis_account.email.clone(),
             redis_account.code.clone(),
+            forgot_key.clone(),
         );
     }
 

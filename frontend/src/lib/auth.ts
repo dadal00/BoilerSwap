@@ -4,6 +4,10 @@ import { Status, type Account } from '$lib/models'
 import { appState } from '$lib/AppState.svelte'
 
 export async function forgot(email: string): Promise<void> {
+	if (appState.isLimited()) {
+		return
+	}
+
 	if (!/.+@purdue\.edu$/.test(email)) {
 		console.log('Recovery failed: email must be a Purdue address')
 		return
@@ -30,6 +34,10 @@ export async function forgot(email: string): Promise<void> {
 }
 
 export async function login(account: Account): Promise<void> {
+	if (appState.isLimited()) {
+		return
+	}
+
 	account.action = 'login'
 
 	if (!/.+@purdue\.edu$/.test(account.email)) {
@@ -62,6 +70,10 @@ export async function login(account: Account): Promise<void> {
 }
 
 export async function signup(account: Account, confirmPassword: string): Promise<void> {
+	if (appState.isLimited()) {
+		return
+	}
+
 	account.action = 'signup'
 
 	if (!/.+@purdue\.edu$/.test(account.email)) {
@@ -98,6 +110,10 @@ export async function signup(account: Account, confirmPassword: string): Promise
 }
 
 export async function verify(auth_code: string): Promise<void> {
+	if (appState.isLimited()) {
+		return
+	}
+
 	if (!appState.getStatus(Status.isVerifying)) {
 		return
 	}
@@ -129,6 +145,10 @@ export async function verify(auth_code: string): Promise<void> {
 }
 
 export async function verify_forget(auth_code: string) {
+	if (appState.isLimited()) {
+		return
+	}
+
 	if (!appState.getStatus(Status.isVerifyingForgot)) {
 		return
 	}
@@ -160,6 +180,10 @@ export async function verify_forget(auth_code: string) {
 }
 
 export async function update(new_password: string) {
+	if (appState.isLimited()) {
+		return
+	}
+
 	if (!appState.getStatus(Status.isVerifyingUpdate)) {
 		return
 	}
@@ -191,6 +215,10 @@ export async function update(new_password: string) {
 }
 
 export async function signout() {
+	if (appState.isLimited()) {
+		return
+	}
+
 	if (appState.getStatus(Status.isSignedIn)) {
 		const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
 			method: 'DELETE',

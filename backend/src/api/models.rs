@@ -60,4 +60,7 @@ pub enum RedisAction {
 
     #[strum(serialize = "auth_lock")]
     LockedAuth,
+
+    #[strum(serialize = "forgot_lock")]
+    LockedForgot,
 }

@@ -1,3 +1,7 @@
+use super::{
+    database::get_user,
+    redis::{incr_failed_attempts, try_get},
+};
 use crate::{AppError, AppState};
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
@@ -42,9 +46,36 @@ async fn send_code_email(
     Ok(())
 }
 
-pub fn spawn_code_task(state: Arc<AppState>, email: String, token: String) {
+pub fn spawn_code_task(
+    state: Arc<AppState>,
+    email: String,
+    token: String,
+    forgot_key: Option<String>,
+) {
     tokio::spawn(async move {
-        if let Err(error) = send_code_email(state, &email, &token).await {
+        if forgot_key.is_some() {
+            match get_user(state.clone(), &email).await {
+                Ok(Some(_)) => (),
+                Ok(None) => return,
+                Err(_) => return,
+            }
+
+            if let Ok(Some(attempts)) = try_get(
+                state.clone(),
+                &forgot_key.clone().expect("is_some failed"),
+                &email,
+            )
+            .await
+            {
+                if let Ok(count) = attempts.parse::<u8>() {
+                    if count >= state.config.verify_max_attempts {
+                        return;
+                    }
+                }
+            }
+        }
+
+        if let Err(error) = send_code_email(state.clone(), &email, &token).await {
             match error {
                 AppError::LettreAddress(msg) => {
                     debug!("Invalid email: {}", msg);
@@ -56,6 +87,17 @@ pub fn spawn_code_task(state: Arc<AppState>, email: String, token: String) {
                     warn!("Unexpected error: {:?}", other);
                 }
             }
+        } else if forgot_key.is_some()
+            && (incr_failed_attempts(
+                state.clone(),
+                &forgot_key.expect("is_some failed"),
+                &email,
+                &state.config.verify_lock_duration_seconds,
+                &state.config.verify_max_attempts,
+            )
+            .await)
+                .is_err()
+        {
         }
     });
 }

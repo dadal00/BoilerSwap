@@ -62,6 +62,12 @@ pub async fn forgot_handler(
         return Ok(StatusCode::UNAUTHORIZED.into_response());
     }
 
+    let forgot_key = format!(
+        "{}:{}",
+        RedisAction::LockedForgot.as_ref(),
+        get_hashed_ip(&headers, address.ip())
+    );
+
     let failed_verify_key = format!(
         "{}:{}",
         RedisAction::LockedVerify.as_ref(),
@@ -84,7 +90,14 @@ pub async fn forgot_handler(
 
     Ok((
         StatusCode::OK,
-        create_temporary_session(state.clone(), &None, &redis_account, RedisAction::Forgot).await?,
+        create_temporary_session(
+            state.clone(),
+            &None,
+            &redis_account,
+            RedisAction::Forgot,
+            &Some(forgot_key),
+        )
+        .await?,
     )
         .into_response())
 }
@@ -143,6 +156,11 @@ pub async fn verify_handler(
         RedisAction::LockedAuth.as_ref(),
         get_hashed_ip(&headers, address.ip())
     );
+    let forgot_key = format!(
+        "{}:{}",
+        RedisAction::LockedForgot.as_ref(),
+        get_hashed_ip(&headers, address.ip())
+    );
 
     let redis_account = match get_redis_account(
         state.clone(),
@@ -156,9 +174,9 @@ pub async fn verify_handler(
     .await?
     {
         Some(account) => {
-            info!("Removed!");
             remove_id(state.clone(), &failed_verify_key, &account.email).await?;
             remove_id(state.clone(), &failed_auth_key, &account.email).await?;
+            remove_id(state.clone(), &forgot_key, &account.email).await?;
             account
         }
         None => {
@@ -171,8 +189,14 @@ pub async fn verify_handler(
 
         return Ok((
             StatusCode::OK,
-            create_temporary_session(state.clone(), &result, &redis_account, RedisAction::Update)
-                .await?,
+            create_temporary_session(
+                state.clone(),
+                &result,
+                &redis_account,
+                RedisAction::Update,
+                &None,
+            )
+            .await?,
         )
             .into_response());
     }
@@ -248,7 +272,14 @@ pub async fn authenticate_handler(
 
     Ok((
         StatusCode::OK,
-        create_temporary_session(state.clone(), &None, &redis_account, RedisAction::Auth).await?,
+        create_temporary_session(
+            state.clone(),
+            &None,
+            &redis_account,
+            RedisAction::Auth,
+            &None,
+        )
+        .await?,
     )
         .into_response())
 }
