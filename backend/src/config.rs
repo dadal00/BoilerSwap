@@ -51,13 +51,13 @@ impl Config {
             .parse()
             .map_err(|_| AppError::Config("Invalid RUST_AUTH_LOCK_DURATION_SECS value".into()))?;
 
-        let auth_max_attempts = var("RUST_AUTH_MAX_ATTEMPTS")
+        let auth_max_attempts = var("PUBLIC_AUTH_MAX_ATTEMPTS")
             .inspect_err(|_| {
-                info!("RUST_AUTH_MAX_ATTEMPTS not set, using default");
+                info!("PUBLIC_AUTH_MAX_ATTEMPTS not set, using default");
             })
             .unwrap_or_else(|_| "15".into())
             .parse()
-            .map_err(|_| AppError::Config("Invalid RUST_AUTH_MAX_ATTEMPTS value".into()))?;
+            .map_err(|_| AppError::Config("Invalid PUBLIC_AUTH_MAX_ATTEMPTS value".into()))?;
 
         let verify_lock_duration_seconds = var("RUST_VERIFY_LOCK_DURATION_SECS")
             .inspect_err(|_| {
@@ -67,22 +67,22 @@ impl Config {
             .parse()
             .map_err(|_| AppError::Config("Invalid RUST_VERIFY_LOCK_DURATION_SECS value".into()))?;
 
-        let verify_max_attempts = var("RUST_VERIFY_MAX_ATTEMPTS")
+        let verify_max_attempts = var("PUBLIC_VERIFY_MAX_ATTEMPTS")
             .inspect_err(|_| {
-                info!("RUST_VERIFY_MAX_ATTEMPTS not set, using default");
+                info!("PUBLIC_VERIFY_MAX_ATTEMPTS not set, using default");
             })
             .unwrap_or_else(|_| "3".into())
             .parse()
-            .map_err(|_| AppError::Config("Invalid RUST_VERIFY_MAX_ATTEMPTS value".into()))?;
+            .map_err(|_| AppError::Config("Invalid PUBLIC_VERIFY_MAX_ATTEMPTS value".into()))?;
 
-        let temporary_session_duration_seconds = var("RUST_TEMP_SESSION_DURATION_SECS")
+        let temporary_session_duration_seconds = var("PUBLIC_TEMP_SESSION_DURATION_SECS")
             .inspect_err(|_| {
-                info!("RUST_TEMP_SESSION_DURATION_SECS not set, using default");
+                info!("PUBLIC_TEMP_SESSION_DURATION_SECS not set, using default");
             })
             .unwrap_or_else(|_| "600".into())
             .parse()
             .map_err(|_| {
-                AppError::Config("Invalid RUST_TEMP_SESSION_DURATION_SECS value".into())
+                AppError::Config("Invalid PUBLIC_TEMP_SESSION_DURATION_SECS value".into())
             })?;
 
         let session_duration_seconds = var("RUST_SESSION_DURATION_SECS")
