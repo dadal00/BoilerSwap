@@ -6,16 +6,10 @@ class AppState {
 	private toVerifyForgot: boolean = $state(false)
 	private toVerifyUpdate: boolean = $state(false)
 
-	private failedAuthAttempts: number = $state(0)
-	private failedVerifyAttempts: number = $state(0)
 	private lastAttempt: number = Date.now()
 
 	getAttempts(attempt: Attempt): number {
 		switch (attempt) {
-			case Attempt.authAttempts:
-				return this.failedAuthAttempts
-			case Attempt.verifyAttempts:
-				return this.failedVerifyAttempts
 			case Attempt.lastAttempt:
 				return this.lastAttempt
 			default:
@@ -25,12 +19,6 @@ class AppState {
 
 	setAttempts(attempt: Attempt, value: number): void {
 		switch (attempt) {
-			case Attempt.authAttempts:
-				this.failedAuthAttempts = value
-				break
-			case Attempt.verifyAttempts:
-				this.failedVerifyAttempts = value
-				break
 			case Attempt.lastAttempt:
 				this.lastAttempt = value
 				break
@@ -71,6 +59,10 @@ class AppState {
 			default:
 				throw new Error('Invalid flag')
 		}
+	}
+
+	isLimited(): boolean {
+		return Date.now() < this.lastAttempt + 500
 	}
 }
 

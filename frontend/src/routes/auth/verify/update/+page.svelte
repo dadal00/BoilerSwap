@@ -14,9 +14,12 @@
 			goto('/browse')
 		}
 
-		timer = setTimeout(() => {
-			appState.setStatus(Status.isVerifyingUpdate, false)
-		}, PUBLIC_TEMP_SESSION_DURATION_SECS * 1000)
+		timer = setTimeout(
+			() => {
+				appState.setStatus(Status.isVerifyingUpdate, false)
+			},
+			Number(PUBLIC_TEMP_SESSION_DURATION_SECS) * 1000
+		)
 	})
 
 	$effect(() => {
