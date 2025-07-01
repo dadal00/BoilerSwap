@@ -1,10 +1,36 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
+	import { PUBLIC_BACKEND_URL, PUBLIC_MAX_CHARS } from '$env/static/public'
+	import { appState } from '$lib/AppState.svelte'
+	import { type ItemType, type Condition, type Location } from '$lib/models'
 
-	function submitItem(event: SubmitEvent) {
+	let item_type: ItemType = $state('Furniture')
+	let condition: Condition = $state('Fair')
+	let title: string = $state('')
+	let description: string = $state('')
+	let location: Location = $state('CaryQuadEast')
+
+	async function submitItem(event: SubmitEvent) {
 		event.preventDefault()
-		alert('Item posted successfully! (This is a demo - no actual posting occurred)')
-		goto('/')
+
+		if (appState.isProductLimited()) {
+			return
+		}
+
+		appState.setLastAttempt(Date.now())
+		const response = await fetch(PUBLIC_BACKEND_URL + '/post-item', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
+			body: JSON.stringify({ item_type, condition, title, description, location })
+		})
+
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`)
+		}
+
+		alert('Item posted successfully!')
+		goto('/browse')
 	}
 </script>
 
@@ -24,15 +50,14 @@
 				<div>
 					<label class="block text-sm font-medium mb-2">
 						Item Type *
-						<select required class="w-full px-4 py-2 border rounded-lg">
-							<option value="">Select item type</option>
-							<option value="furniture-chair">Chair</option>
-							<option value="furniture-desk">Desk</option>
-							<option value="electronics-fridge">Mini Fridge</option>
-							<option value="electronics-microwave">Microwave</option>
-							<option value="books-textbook">Textbook</option>
-							<option value="kitchen-cookware">Cookware</option>
-							<option value="other">Other</option>
+						<select required class="w-full px-4 py-2 border rounded-lg" bind:value={item_type}>
+							<option value="" disabled selected hidden>Select item type</option>
+							<option value="Furniture">Furniture</option>
+							<option value="Electronics">Electronics</option>
+							<option value="Books">Books</option>
+							<option value="Kitchen">Kitchen</option>
+							<option value="Clothing">Clothing</option>
+							<option value="Other">Other</option>
 						</select>
 					</label>
 				</div>
@@ -45,6 +70,8 @@
 							required
 							placeholder="e.g., IKEA Desk Chair - Great Condition"
 							class="w-full px-4 py-2 border rounded-lg"
+							bind:value={title}
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 						/>
 					</label>
 				</div>
@@ -54,15 +81,34 @@
 						Condition *
 						<div class="space-y-2">
 							<label class="flex items-center">
-								<input type="radio" name="condition" value="excellent" required class="mr-2" />
+								<input
+									type="radio"
+									bind:group={condition}
+									name="condition"
+									value="Excellent"
+									required
+									class="mr-2"
+								/>
 								Excellent - Like new, minimal wear
 							</label>
 							<label class="flex items-center">
-								<input type="radio" name="condition" value="good" class="mr-2" />
+								<input
+									type="radio"
+									bind:group={condition}
+									name="condition"
+									value="Good"
+									class="mr-2"
+								/>
 								Good - Some wear but fully functional
 							</label>
 							<label class="flex items-center">
-								<input type="radio" name="condition" value="fair" class="mr-2" />
+								<input
+									type="radio"
+									bind:group={condition}
+									name="condition"
+									value="Fair"
+									class="mr-2"
+								/>
 								Fair - Noticeable wear but still usable
 							</label>
 						</div>
@@ -75,6 +121,8 @@
 						<textarea
 							placeholder="Add any additional details, flaws, or special instructions..."
 							class="w-full px-4 py-2 border rounded-lg h-24"
+							bind:value={description}
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 						></textarea>
 					</label>
 				</div>
@@ -82,14 +130,14 @@
 				<div>
 					<label class="block text-sm font-medium mb-2">
 						Pickup Location *
-						<select required class="w-full px-4 py-2 border rounded-lg">
-							<option value="">Select pickup location</option>
-							<option value="cary-east">Cary Quad - East</option>
-							<option value="wiley">Wiley Hall</option>
-							<option value="harrison">Harrison Hall</option>
-							<option value="earhart">Earhart Hall</option>
-							<option value="hillenbrand">Hillenbrand Hall</option>
-							<option value="third-street">Third Street Suites</option>
+						<select required class="w-full px-4 py-2 border rounded-lg" bind:value={location}>
+							<option value="" disabled selected hidden>Select pickup location</option>
+							<option value="CaryQuadEast">Cary Quad - East</option>
+							<option value="WileyHall">Wiley Hall</option>
+							<option value="HarrisonHall">Harrison Hall</option>
+							<option value="EarhartHall">Earhart Hall</option>
+							<option value="HillenbrandHall">Hillenbrand Hall</option>
+							<option value="ThirdStreetSuites">Third Street Suites</option>
 						</select>
 					</label>
 				</div>
@@ -99,7 +147,7 @@
 						Urgency Level *
 						<div class="space-y-2">
 							<label class="flex items-center">
-								<input type="radio" name="urgency" value="low" required class="mr-2" />
+								<input type="radio" name="urgency" value="low" class="mr-2" />
 								<div>
 									<div class="font-medium">Flexible (3+ days)</div>
 									<div class="text-sm text-gray-500">No rush, available for a week or more</div>
@@ -132,7 +180,6 @@
 						Contact Information *
 						<input
 							type="email"
-							required
 							placeholder="Your Purdue email"
 							class="w-full px-4 py-2 border rounded-lg"
 						/>

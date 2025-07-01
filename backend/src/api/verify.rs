@@ -13,7 +13,8 @@ use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use regex::Regex;
-use std::{fs::read_to_string, sync::Arc};
+use rustrict::CensorStr;
+use std::{env, fs::read_to_string, sync::Arc};
 use tracing::warn;
 
 pub static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.+@purdue\.edu$").unwrap());
@@ -29,6 +30,18 @@ pub static DECODING_KEY: Lazy<DecodingKey> = Lazy::new(|| {
             .unwrap()
             .as_bytes(),
     )
+});
+pub static MAX_CHARS: Lazy<usize> = Lazy::new(|| {
+    env::var("PUBLIC_MAX_CHARS")
+        .ok()
+        .and_then(|val| val.parse::<usize>().ok())
+        .unwrap_or(100)
+});
+pub static CODE_LENGTH: Lazy<usize> = Lazy::new(|| {
+    env::var("PUBLIC_CODE_LENGTH")
+        .ok()
+        .and_then(|val| val.parse::<usize>().ok())
+        .unwrap_or(6)
 });
 
 pub async fn verify_token(
@@ -56,6 +69,13 @@ pub async fn verify_token(
             id,
         )));
     }
+    if let Some(id) = get_cookie(&headers, RedisAction::Session.as_ref()) {
+        return Ok(Some((
+            try_get(state.clone(), RedisAction::Session.as_ref(), &id).await?,
+            RedisAction::Session,
+            id,
+        )));
+    }
     Ok(None)
 }
 
@@ -80,6 +100,26 @@ pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppE
         .is_ok())
 }
 
+pub fn validate_item(title: &str, description: &str) -> Result<(), &'static str> {
+    validate_item_attribute(title)?;
+
+    validate_item_attribute(description)?;
+
+    Ok(())
+}
+
+pub fn validate_item_attribute(payload: &str) -> Result<(), &'static str> {
+    if !validate_length(payload) {
+        return Err("Too many chars");
+    }
+
+    if payload.is_inappropriate() {
+        return Err("Inappropriate");
+    }
+
+    Ok(())
+}
+
 pub fn validate_account(email: &str, password: &str) -> Result<(), &'static str> {
     validate_email(email)?;
 
@@ -88,8 +128,12 @@ pub fn validate_account(email: &str, password: &str) -> Result<(), &'static str>
     Ok(())
 }
 
+pub fn validate_length(payload: &str) -> bool {
+    payload.len() < *MAX_CHARS
+}
+
 pub fn validate_password(password: &str) -> Result<(), &'static str> {
-    if password.len() > 100 {
+    if !validate_length(password) {
         return Err("Too many chars");
     }
 
@@ -101,7 +145,7 @@ pub fn validate_password(password: &str) -> Result<(), &'static str> {
 }
 
 pub fn validate_email(email: &str) -> Result<(), &'static str> {
-    if email.len() > 100 {
+    if !validate_length(email) {
         return Err("Too many chars");
     }
 

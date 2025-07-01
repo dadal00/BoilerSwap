@@ -11,17 +11,17 @@ export type Verification = {
 	code: string
 }
 
-export type ItemType = 'Furniture' | 'Electronics' | 'Books' | 'Kitchen' | 'Clothing'
+export type ItemType = 'Furniture' | 'Electronics' | 'Books' | 'Kitchen' | 'Clothing' | 'Other'
 
 export type Condition = 'Excellent' | 'Good' | 'Fair'
 
 export type Location =
-	| 'Cary Quad - East'
-	| 'Wiley Hall'
-	| 'Harrison Hall'
-	| 'Earhart Hall'
-	| 'Hillenbrand Hall'
-	| 'Third Street Suites'
+	| 'CaryQuadEast'
+	| 'WileyHall'
+	| 'HarrisonHall'
+	| 'EarhartHall'
+	| 'HillenbrandHall'
+	| 'ThirdStreetSuites'
 
 export type Product = {
 	item_type: ItemType
@@ -36,10 +36,4 @@ export enum Status {
 	isVerifying,
 	isVerifyingForgot,
 	isVerifyingUpdate
-}
-
-export enum Attempt {
-	authAttempts,
-	verifyAttempts,
-	lastAttempt
 }

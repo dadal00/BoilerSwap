@@ -1,12 +1,14 @@
 use super::{
+    database::insert_item,
     lock::{freeze_account, unfreeze_account},
-    models::{Account, Action, RedisAccount, RedisAction, Token},
+    models::{Account, Action, ItemPayload, RedisAccount, RedisAction, Token},
     redis::{create_redis_account, get_redis_account, incr_failed_attempts, remove_id, try_get},
     sessions::{create_session, create_temporary_session, generate_cookie, get_cookie},
     twofactor::{CODE_REGEX, generate_code},
     utilities::{get_hashed_ip, get_key},
     verify::{
-        validate_account, validate_api_token, validate_email, validate_password, verify_token,
+        CODE_LENGTH, validate_account, validate_api_token, validate_email, validate_item,
+        validate_password, verify_token,
     },
 };
 use crate::{AppError, state::AppState};
@@ -123,7 +125,12 @@ pub async fn verify_handler(
     Json(payload): Json<Token>,
 ) -> Result<impl IntoResponse, AppError> {
     let (result, redis_action, id) = match verify_token(state.clone(), headers.clone()).await? {
-        Some((a, b, c)) => (a, b, c),
+        Some((a, pending_redis_action, c)) => {
+            if pending_redis_action == RedisAction::Session {
+                return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+            }
+            (a, pending_redis_action, c)
+        }
         None => {
             return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
         }
@@ -134,7 +141,7 @@ pub async fn verify_handler(
     }
 
     if (redis_action == RedisAction::Auth || redis_action == RedisAction::Forgot)
-        && (payload.token.len() != 6 || !CODE_REGEX.is_match(&payload.token))
+        && (payload.token.len() != *CODE_LENGTH || !CODE_REGEX.is_match(&payload.token))
     {
         return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
     }
@@ -263,4 +270,30 @@ pub async fn authenticate_handler(
         .await?,
     )
         .into_response())
+}
+
+pub async fn post_item_handler(
+    headers: HeaderMap,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ItemPayload>,
+) -> Result<impl IntoResponse, AppError> {
+    match verify_token(state.clone(), headers.clone()).await? {
+        Some((_, redis_action, _)) => {
+            if redis_action != RedisAction::Session {
+                return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+            }
+        }
+        None => {
+            return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+        }
+    };
+
+    if let Err(e) = validate_item(&payload.title, &payload.description) {
+        return Ok((StatusCode::BAD_REQUEST, e).into_response());
+    }
+
+    insert_item(state.clone(), payload).await?;
+
+    Ok((StatusCode::OK).into_response())
 }

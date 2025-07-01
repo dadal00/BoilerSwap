@@ -1,5 +1,9 @@
-use super::models::RedisAccount;
+use super::{
+    models::{ItemPayload, RedisAccount},
+    utilities::get_seconds_until,
+};
 use crate::{error::AppError, state::AppState};
+use chrono::Weekday;
 use scylla::{
     client::{session::Session, session_builder::SessionBuilder},
     response::{PagingState, query_result::FirstRowError::RowsEmpty},
@@ -7,6 +11,7 @@ use scylla::{
 };
 use std::{env, sync::Arc};
 use tracing::warn;
+use uuid::Uuid;
 
 pub struct DatabaseQueries {
     pub get_user: PreparedStatement,
@@ -14,6 +19,7 @@ pub struct DatabaseQueries {
     pub check_lock: PreparedStatement,
     pub update_lock: PreparedStatement,
     pub unlock_account: PreparedStatement,
+    pub insert_item: PreparedStatement,
 }
 
 pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError> {
@@ -76,6 +82,9 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
             .await?,
         unlock_account: database_session
             .prepare("UPDATE boiler_swap.users SET locked = false, password_hash = ? WHERE email = ?")
+            .await?,
+        insert_item: database_session
+            .prepare("INSERT INTO boiler_swap.products (product_id, item_type, title, condition, location, description) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?")
             .await?,
     };
 
@@ -163,6 +172,28 @@ pub async fn unlock_account(
         .execute_single_page(
             &state.database_queries.unlock_account,
             (password_hash, email),
+            fallback_page_state,
+        )
+        .await?;
+
+    Ok(())
+}
+
+pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), AppError> {
+    let fallback_page_state = PagingState::start();
+    state
+        .database_session
+        .execute_single_page(
+            &state.database_queries.insert_item,
+            (
+                Uuid::new_v4(),
+                item.item_type as i8,
+                item.title,
+                item.condition as i8,
+                item.location as i8,
+                item.description,
+                get_seconds_until(Weekday::Thu),
+            ),
             fallback_page_state,
         )
         .await?;
