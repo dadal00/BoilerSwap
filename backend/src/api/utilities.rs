@@ -1,3 +1,4 @@
+use super::models::RedisAction;
 use axum::http::header::HeaderMap;
 use sha2::{Digest, Sha256};
 use std::net::IpAddr;
@@ -20,4 +21,8 @@ pub fn get_hashed_ip(headers: &HeaderMap, direct_ip: IpAddr) -> String {
     hasher.update(ip.as_bytes());
 
     format!("{:x}", hasher.finalize())
+}
+
+pub fn get_key(redis_action: RedisAction, hashed_ip: &str) -> String {
+    format!("{}:{}", redis_action.as_ref(), hashed_ip)
 }

@@ -4,7 +4,7 @@ use super::{
     redis::{create_redis_account, get_redis_account, incr_failed_attempts, remove_id, try_get},
     sessions::{create_session, create_temporary_session, generate_cookie, get_cookie},
     twofactor::{CODE_REGEX, generate_code},
-    utilities::get_hashed_ip,
+    utilities::{get_hashed_ip, get_key},
     verify::{
         validate_account, validate_api_token, validate_email, validate_password, verify_token,
     },
@@ -62,17 +62,10 @@ pub async fn forgot_handler(
         return Ok(StatusCode::UNAUTHORIZED.into_response());
     }
 
-    let forgot_key = format!(
-        "{}:{}",
-        RedisAction::LockedForgot.as_ref(),
-        get_hashed_ip(&headers, address.ip())
-    );
+    let hashed_ip = get_hashed_ip(&headers, address.ip());
 
-    let failed_verify_key = format!(
-        "{}:{}",
-        RedisAction::LockedVerify.as_ref(),
-        get_hashed_ip(&headers, address.ip())
-    );
+    let forgot_key = get_key(RedisAction::LockedForgot, &hashed_ip);
+    let failed_verify_key = get_key(RedisAction::LockedVerify, &hashed_ip);
 
     if let Some(attempts) = try_get(state.clone(), &failed_verify_key, &payload.token).await? {
         if attempts.parse::<u8>()? >= state.config.verify_max_attempts {
@@ -146,21 +139,11 @@ pub async fn verify_handler(
         return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
     }
 
-    let failed_verify_key = format!(
-        "{}:{}",
-        RedisAction::LockedVerify.as_ref(),
-        get_hashed_ip(&headers, address.ip())
-    );
-    let failed_auth_key = format!(
-        "{}:{}",
-        RedisAction::LockedAuth.as_ref(),
-        get_hashed_ip(&headers, address.ip())
-    );
-    let forgot_key = format!(
-        "{}:{}",
-        RedisAction::LockedForgot.as_ref(),
-        get_hashed_ip(&headers, address.ip())
-    );
+    let hashed_ip = get_hashed_ip(&headers, address.ip());
+
+    let forgot_key = get_key(RedisAction::LockedForgot, &hashed_ip);
+    let failed_verify_key = get_key(RedisAction::LockedVerify, &hashed_ip);
+    let failed_auth_key = get_key(RedisAction::LockedAuth, &hashed_ip);
 
     let redis_account = match get_redis_account(
         state.clone(),
@@ -224,11 +207,9 @@ pub async fn authenticate_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Account>,
 ) -> Result<impl IntoResponse, AppError> {
-    let failed_auth_key = format!(
-        "{}:{}",
-        RedisAction::LockedAuth.as_ref(),
-        get_hashed_ip(&headers, address.ip())
-    );
+    let hashed_ip = get_hashed_ip(&headers, address.ip());
+
+    let failed_auth_key = get_key(RedisAction::LockedAuth, &hashed_ip);
 
     if let Some(attempts) = try_get(state.clone(), &failed_auth_key, &payload.email).await? {
         if attempts.parse::<u8>()? >= state.config.auth_max_attempts {
