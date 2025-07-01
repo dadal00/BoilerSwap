@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
-	import { PUBLIC_TEMP_SESSION_DURATION_SECS } from '$env/static/public'
+	import { PUBLIC_TEMP_SESSION_DURATION_SECS, PUBLIC_CODE_LENGTH } from '$env/static/public'
 	import { appState } from '$lib/AppState.svelte'
 	import { Status } from '$lib/models'
 	import { onDestroy, onMount } from 'svelte'
@@ -40,6 +40,9 @@
 		bind:value={auth_code}
 		placeholder="Enter your code"
 		class="border p-2 rounded w-full"
+		minlength={Number(PUBLIC_CODE_LENGTH)}
+		maxlength={Number(PUBLIC_CODE_LENGTH)}
+		required
 	/>
 	<button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded"> Submit </button>
 </form>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
-	import { PUBLIC_TEMP_SESSION_DURATION_SECS } from '$env/static/public'
+	import { PUBLIC_TEMP_SESSION_DURATION_SECS, PUBLIC_MAX_CHARS } from '$env/static/public'
 	import { appState } from '$lib/AppState.svelte'
 	import { Status } from '$lib/models'
 	import { onDestroy, onMount } from 'svelte'
@@ -40,6 +40,8 @@
 		bind:value={new_password}
 		placeholder="Enter your new password"
 		class="border p-2 rounded w-full"
+		maxlength={Number(PUBLIC_MAX_CHARS)}
+		required
 	/>
 	<button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded"> Submit </button>
 </form>

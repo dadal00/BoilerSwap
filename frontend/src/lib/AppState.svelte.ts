@@ -1,4 +1,4 @@
-import { Attempt, Status } from './models'
+import { Status } from './models'
 
 class AppState {
 	private signedIn: boolean = $state(false)
@@ -8,23 +8,8 @@ class AppState {
 
 	private lastAttempt: number = Date.now()
 
-	getAttempts(attempt: Attempt): number {
-		switch (attempt) {
-			case Attempt.lastAttempt:
-				return this.lastAttempt
-			default:
-				throw new Error('Invalid flag')
-		}
-	}
-
-	setAttempts(attempt: Attempt, value: number): void {
-		switch (attempt) {
-			case Attempt.lastAttempt:
-				this.lastAttempt = value
-				break
-			default:
-				throw new Error('Invalid flag')
-		}
+	setLastAttempt(value: number): void {
+		this.lastAttempt = value
 	}
 
 	getStatus(status: Status): boolean {
@@ -63,6 +48,9 @@ class AppState {
 
 	isLimited(): boolean {
 		return Date.now() < this.lastAttempt + 500
+	}
+	isProductLimited(): boolean {
+		return Date.now() < this.lastAttempt + 5000
 	}
 }
 

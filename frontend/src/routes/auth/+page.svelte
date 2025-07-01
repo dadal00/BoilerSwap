@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { type Account } from '$lib/models'
 	import { login, signup, forgot } from '$lib/auth'
+	import { PUBLIC_MAX_CHARS } from '$env/static/public'
 
 	let activeTab = $state('login')
 	let account: Account = { email: '', password: '', action: 'signup' }
@@ -74,6 +75,7 @@
 							placeholder="yourname@purdue.edu"
 							class="w-full px-4 py-2 border rounded-lg"
 							bind:value={account.email}
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 						/>
 					</label>
 				</div>
@@ -84,6 +86,7 @@
 							type="password"
 							class="w-full px-4 py-2 border rounded-lg"
 							bind:value={account.password}
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 						/>
 					</label>
 				</div>
@@ -114,7 +117,7 @@
 							type="email"
 							placeholder="yourname@purdue.edu"
 							class="w-full px-4 py-2 border rounded-lg"
-							maxlength="64"
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 							bind:value={account.email}
 						/>
 					</label>
@@ -126,7 +129,7 @@
 						<input
 							type="password"
 							class="w-full px-4 py-2 border rounded-lg"
-							maxlength="64"
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 							required
 							bind:value={account.password}
 						/>
@@ -138,7 +141,7 @@
 						<input
 							type="password"
 							class="w-full px-4 py-2 border rounded-lg"
-							maxlength="64"
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 							bind:value={confirmPassword}
 						/>
 					</label>
@@ -168,6 +171,7 @@
 							type="email"
 							placeholder="yourname@purdue.edu"
 							class="w-full px-4 py-2 border rounded-lg"
+							maxlength={Number(PUBLIC_MAX_CHARS)}
 							bind:value={account.email}
 						/>
 					</label>

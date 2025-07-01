@@ -14,11 +14,13 @@ export async function forgot(email: string): Promise<void> {
 	}
 
 	try {
+		appState.setLastAttempt(Date.now())
 		const response = await fetch(PUBLIC_BACKEND_URL + '/forgot', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
 			},
+			credentials: 'include',
 			body: JSON.stringify({ token: email })
 		})
 
@@ -50,11 +52,13 @@ export async function login(account: Account): Promise<void> {
 	}
 
 	try {
+		appState.setLastAttempt(Date.now())
 		const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
 			},
+			credentials: 'include',
 			body: JSON.stringify(account)
 		})
 
@@ -90,11 +94,13 @@ export async function signup(account: Account, confirmPassword: string): Promise
 	}
 
 	try {
+		appState.setLastAttempt(Date.now())
 		const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
 			},
+			credentials: 'include',
 			body: JSON.stringify(account)
 		})
 
@@ -124,6 +130,7 @@ export async function verify(auth_code: string): Promise<void> {
 	}
 
 	try {
+		appState.setLastAttempt(Date.now())
 		const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
 			method: 'POST',
 			headers: {
@@ -159,6 +166,7 @@ export async function verify_forget(auth_code: string) {
 	}
 
 	try {
+		appState.setLastAttempt(Date.now())
 		const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
 			method: 'POST',
 			headers: {
@@ -194,6 +202,7 @@ export async function update(new_password: string) {
 	}
 
 	try {
+		appState.setLastAttempt(Date.now())
 		const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
 			method: 'POST',
 			headers: {
@@ -220,6 +229,7 @@ export async function signout() {
 	}
 
 	if (appState.getStatus(Status.isSignedIn)) {
+		appState.setLastAttempt(Date.now())
 		const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
 			method: 'DELETE',
 			credentials: 'include'
