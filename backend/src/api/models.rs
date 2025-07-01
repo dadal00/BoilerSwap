@@ -64,3 +64,6 @@ pub enum RedisAction {
     #[strum(serialize = "forgot_lock")]
     LockedForgot,
 }
+
+#[derive(Deserialize)]
+pub struct DummyClaims {}

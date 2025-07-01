@@ -96,6 +96,8 @@ services:
     image: boiler_caddy:latest
     networks:
       - main_net
+    secrets:
+      - API_TOKEN
     ports:
       - "80:80"
       - "443:443"
@@ -111,7 +113,7 @@ services:
         loki-batch-size: "10"
         loki-timeout: "10s"
         loki-retries: "3"
-    command: sh -c "caddy run --config /etc/caddy/Caddyfile"
+    command: sh -c "export API_TOKEN=$$(cat /run/secrets/API_TOKEN) && caddy run --config /etc/caddy/Caddyfile"
     environment:
       - CADDY_LOG_ROTATE_DAYS=356
       - CADDY_LOG_ROTATE_SIZE=10000

@@ -1,12 +1,27 @@
 import type { Handle } from '@sveltejs/kit'
 import { env } from '$env/dynamic/private'
+import { SignJWT } from 'jose'
 
 export const handle: Handle = async ({ event, resolve }) => {
-	event.cookies.set('api_token', `${env.API_TOKEN}`, {
+	if (
+		!(event.request.method === 'HEAD' && event.request.headers.get('x-refresh')) &&
+		event.cookies.get('api_token')
+	) {
+		return resolve(event)
+	}
+
+	const jwt = await new SignJWT({})
+		.setProtectedHeader({ alg: 'HS256' })
+		.setIssuedAt()
+		.setExpirationTime('5m')
+		.sign(new TextEncoder().encode(env.API_TOKEN))
+
+	event.cookies.set('api_token', jwt, {
 		path: '/',
 		httpOnly: true,
 		sameSite: 'strict',
-		secure: true
+		secure: true,
+		maxAge: 60 * 5
 	})
 
 	return resolve(event)

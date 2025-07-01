@@ -45,7 +45,7 @@ pub async fn api_token_check(
         return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
     }
 
-    if validate_api_token(headers, &state.config.api_token) {
+    if validate_api_token(headers) {
         return Ok(next.run(request).await);
     }
 

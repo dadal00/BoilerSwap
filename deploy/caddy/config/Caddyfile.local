@@ -1,10 +1,23 @@
 {
+	debug
+	order authenticate before respond
+	order authorize before reverse_proxy
 	log stdout {
 		output stdout
 	}
+	security {
+		authorization policy verifyAPI {
+			allow roles anonymous guest
+			set token sources cookie
+			crypto key verify {$API_TOKEN}
+			crypto key token name api_token
+		}
+	}
 }
 {$CADDY_DOMAIN} {
+
 	handle /api/* {
+		authorize with verifyAPI
 		reverse_proxy {$RUST_NAME}:{$RUST_PORT}
 	}
 

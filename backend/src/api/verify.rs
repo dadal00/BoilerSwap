@@ -1,17 +1,35 @@
-use super::{models::RedisAction, redis::try_get, sessions::get_cookie};
+use super::{
+    models::{DummyClaims, RedisAction},
+    redis::try_get,
+    sessions::get_cookie,
+};
 use crate::{AppError, AppState};
 use argon2::{
     Algorithm::Argon2id, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier,
     Version::V0x13, password_hash::SaltString,
 };
-use axum::http::header::{AUTHORIZATION, HeaderMap};
+use axum::http::header::HeaderMap;
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use once_cell::sync::Lazy;
 use rand::rngs::OsRng;
 use regex::Regex;
-use std::sync::Arc;
+use std::{fs::read_to_string, sync::Arc};
 use tracing::warn;
 
 pub static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.+@purdue\.edu$").unwrap());
+pub static VALIDATION: Lazy<Validation> = Lazy::new(|| Validation::new(Algorithm::HS256));
+pub static DECODING_KEY: Lazy<DecodingKey> = Lazy::new(|| {
+    DecodingKey::from_secret(
+        read_to_string("/run/secrets/API_TOKEN")
+            .map(|s| s.trim().to_string())
+            .map_err(|e| {
+                warn!("Failed to read API_TOKEN from file: {}", e);
+                AppError::IO(e)
+            })
+            .unwrap()
+            .as_bytes(),
+    )
+});
 
 pub async fn verify_token(
     state: Arc<AppState>,
@@ -41,21 +59,14 @@ pub async fn verify_token(
     Ok(None)
 }
 
-pub fn validate_api_token(headers: HeaderMap, real_api_token: &str) -> bool {
-    if let Some(api_header) = headers.get(AUTHORIZATION) {
-        if api_header
-            .to_str()
-            .is_ok_and(|api_token| api_token == real_api_token)
-        {
-            return true;
-        }
+pub fn validate_api_token(headers: HeaderMap) -> bool {
+    let jwt = get_cookie(&headers, "api_token");
+
+    if jwt.is_none() {
+        return false;
     }
 
-    if get_cookie(&headers, "api_token").unwrap_or_default() == real_api_token {
-        return true;
-    }
-
-    false
+    decode::<DummyClaims>(&jwt.expect("is_none failed"), &DECODING_KEY, &VALIDATION).is_ok()
 }
 
 pub fn verify_password(password: &str, password_hash: &str) -> Result<bool, AppError> {
