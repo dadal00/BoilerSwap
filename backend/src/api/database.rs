@@ -1,5 +1,5 @@
 use super::{
-    models::{ItemPayload, RedisAccount},
+    models::{Condition, Item, ItemPayload, ItemRow, ItemType, Location, RedisAccount},
     utilities::get_seconds_until,
 };
 use crate::{error::AppError, state::AppState};
@@ -7,12 +7,13 @@ use chrono::Weekday;
 use scylla::{
     client::{session::Session, session_builder::SessionBuilder},
     response::{PagingState, query_result::FirstRowError::RowsEmpty},
-    statement::prepared::PreparedStatement,
+    statement::{prepared::PreparedStatement, unprepared::Statement},
 };
 use std::{env, sync::Arc};
 use tracing::warn;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct DatabaseQueries {
     pub get_user: PreparedStatement,
     pub insert_user: PreparedStatement,
@@ -20,6 +21,7 @@ pub struct DatabaseQueries {
     pub update_lock: PreparedStatement,
     pub unlock_account: PreparedStatement,
     pub insert_item: PreparedStatement,
+    pub get_items: PreparedStatement,
 }
 
 pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError> {
@@ -54,14 +56,14 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
 
     database_session
         .query_unpaged(
-            "CREATE TABLE IF NOT EXISTS boiler_swap.products (
-                product_id uuid,
+            "CREATE TABLE IF NOT EXISTS boiler_swap.items (
+                item_id uuid,
                 item_type tinyint,
                 title text,
                 condition tinyint,
                 location tinyint,
                 description text,
-                PRIMARY KEY(product_id)
+                PRIMARY KEY(item_id)
             ) WITH cdc = {'enabled': true}",
             &[],
         )
@@ -84,7 +86,11 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
             .prepare("UPDATE boiler_swap.users SET locked = false, password_hash = ? WHERE email = ?")
             .await?,
         insert_item: database_session
-            .prepare("INSERT INTO boiler_swap.products (product_id, item_type, title, condition, location, description) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?")
+            .prepare("INSERT INTO boiler_swap.items (item_id, item_type, title, condition, location, description) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?")
+            .await?,
+        get_items: database_session
+            .prepare(Statement::new("SELECT * FROM boiler_swap.items")
+            .with_page_size(100),)
             .await?,
     };
 
@@ -199,4 +205,29 @@ pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), 
         .await?;
 
     Ok(())
+}
+
+pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
+    row_vec
+        .iter()
+        .map(
+            |(id, item_type_i8, title, condition_i8, location_i8, description)| Item {
+                item_id: *id,
+                item_type: ItemType::try_from(item_type_i8.checked_abs().unwrap_or(0) as u8)
+                    .unwrap_or(ItemType::Other)
+                    .as_ref()
+                    .to_string(),
+                title: title.to_string(),
+                condition: Condition::try_from(condition_i8.checked_abs().unwrap_or(0) as u8)
+                    .unwrap_or(Condition::Fair)
+                    .as_ref()
+                    .to_string(),
+                location: Location::try_from(location_i8.checked_abs().unwrap_or(0) as u8)
+                    .unwrap_or(Location::CaryQuadEast)
+                    .as_ref()
+                    .to_string(),
+                description: description.to_string(),
+            },
+        )
+        .collect()
 }

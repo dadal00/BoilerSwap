@@ -134,7 +134,7 @@ fn var(key: &str) -> Result<String, AppError> {
     })
 }
 
-fn read_secret(secret_name: &str) -> Result<String, AppError> {
+pub fn read_secret(secret_name: &str) -> Result<String, AppError> {
     let path = format!("/run/secrets/{}", secret_name);
     read_to_string(&path)
         .map(|s| s.trim().to_string())

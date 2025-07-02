@@ -1,6 +1,7 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, EnumString};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct Account {
@@ -69,33 +70,60 @@ pub enum RedisAction {
 #[derive(Deserialize)]
 pub struct DummyClaims {}
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize)]
+#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
 #[repr(u8)]
 pub enum ItemType {
+    #[strum(serialize = "Furniture")]
     Furniture = 0,
+
+    #[strum(serialize = "Electronics")]
     Electronics = 1,
+
+    #[strum(serialize = "Books")]
     Books = 2,
+
+    #[strum(serialize = "Kitchen")]
     Kitchen = 3,
+
+    #[strum(serialize = "Clothing")]
     Clothing = 4,
+
+    #[strum(serialize = "Other")]
     Other = 5,
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize)]
+#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
 #[repr(u8)]
 pub enum Condition {
+    #[strum(serialize = "Excellent")]
     Excellent = 0,
+
+    #[strum(serialize = "Good")]
     Good = 1,
+
+    #[strum(serialize = "Fair")]
     Fair = 2,
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize)]
+#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
 #[repr(u8)]
 pub enum Location {
+    #[strum(serialize = "CaryQuadEast")]
     CaryQuadEast = 0,
+
+    #[strum(serialize = "WileyHall")]
     WileyHall = 1,
+
+    #[strum(serialize = "HarrisonHall")]
     HarrisonHall = 2,
+
+    #[strum(serialize = "EarhartHall")]
     EarhartHall = 3,
+
+    #[strum(serialize = "HillenbrandHall")]
     HillenbrandHall = 4,
+
+    #[strum(serialize = "ThirdStreetSuites")]
     ThirdStreetSuites = 5,
 }
 
@@ -107,3 +135,15 @@ pub struct ItemPayload {
     pub description: String,
     pub location: Location,
 }
+
+#[derive(Serialize)]
+pub struct Item {
+    pub item_id: Uuid,
+    pub item_type: String,
+    pub title: String,
+    pub condition: String,
+    pub location: String,
+    pub description: String,
+}
+
+pub type ItemRow<'a> = (Uuid, i8, &'a str, i8, i8, &'a str);

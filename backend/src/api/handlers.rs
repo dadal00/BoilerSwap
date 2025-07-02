@@ -274,7 +274,6 @@ pub async fn authenticate_handler(
 
 pub async fn post_item_handler(
     headers: HeaderMap,
-    ConnectInfo(address): ConnectInfo<SocketAddr>,
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ItemPayload>,
 ) -> Result<impl IntoResponse, AppError> {

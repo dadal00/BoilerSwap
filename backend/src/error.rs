@@ -6,10 +6,15 @@ use lettre::{
     address::AddressError, error::Error as lettreGeneralError,
     transport::smtp::Error as lettreTransportError,
 };
+use meilisearch_sdk::errors::Error as meiliError;
 use prometheus::Error as prometheusError;
 use redis::RedisError;
-use scylla::errors::{
-    ExecutionError, FirstRowError, IntoRowsResultError, NewSessionError, PrepareError,
+use scylla::{
+    deserialize::DeserializationError,
+    errors::{
+        ExecutionError, FirstRowError, IntoRowsResultError, NewSessionError, PrepareError,
+        RowsError,
+    },
 };
 use serde_json::Error as serdeJsonError;
 use std::{env::VarError, io::Error as IOError, num::ParseIntError, string::FromUtf8Error};
@@ -49,6 +54,12 @@ pub enum AppError {
     #[error("ScyllaDB first row error: {0}")]
     ScyllaFirstRow(#[from] FirstRowError),
 
+    #[error("ScyllaDB row error: {0}")]
+    ScyllaRowsError(#[from] RowsError),
+
+    #[error("ScyllaDB deserialization error: {0}")]
+    ScyllaDeserializationError(#[from] DeserializationError),
+
     #[error("Tokio join error: {0}")]
     TokioJoin(#[from] JoinError),
 
@@ -69,6 +80,9 @@ pub enum AppError {
 
     #[error("ParseInt error: {0}")]
     ToInt(#[from] ParseIntError),
+
+    #[error("MeiliError error: {0}")]
+    MeiliError(#[from] meiliError),
 }
 
 impl IntoResponse for AppError {

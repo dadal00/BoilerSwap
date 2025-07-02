@@ -37,7 +37,7 @@ async fn main() -> Result<(), AppError> {
 
     info!("Starting server...");
 
-    let state = AppState::new().await?;
+    let (state, meili_reindex_future) = AppState::new().await?;
 
     info!("Server configuration");
     info!("rust_port = {}", state.config.rust_port);
@@ -72,11 +72,13 @@ async fn main() -> Result<(), AppError> {
     info!("Binding to {}", addr);
 
     let listener = TcpListener::bind(&addr).await?;
-    info!("Server running on {}", addr);
+
+    meili_reindex_future.await??;
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+    info!("Server running on {}", addr);
 
     Ok(())
 }

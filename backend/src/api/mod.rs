@@ -1,6 +1,7 @@
 pub mod database;
 pub mod handlers;
 pub mod lock;
+pub mod meilisearch;
 pub mod models;
 pub mod redis;
 pub mod sessions;
