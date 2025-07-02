@@ -1,15 +1,23 @@
 use super::{
+    consumer::MeiliConsumerFactory,
     models::{Condition, Item, ItemPayload, ItemRow, ItemType, Location, RedisAccount},
     utilities::get_seconds_until,
 };
 use crate::{error::AppError, state::AppState};
+use anyhow::Error as anyhowError;
 use chrono::Weekday;
+use futures_util::future::RemoteHandle;
 use scylla::{
     client::{session::Session, session_builder::SessionBuilder},
     response::{PagingState, query_result::FirstRowError::RowsEmpty},
     statement::{prepared::PreparedStatement, unprepared::Statement},
 };
-use std::{env, sync::Arc};
+use scylla_cdc::{
+    checkpoints::TableBackedCheckpointSaver,
+    consumer::CDCRow,
+    log_reader::{CDCLogReader, CDCLogReaderBuilder},
+};
+use std::{env, sync::Arc, time::Duration};
 use tracing::warn;
 use uuid::Uuid;
 
@@ -230,4 +238,98 @@ pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
             },
         )
         .collect()
+}
+
+pub async fn start_cdc(
+    state: Arc<AppState>,
+    scylla_keyspace: &str,
+    scylla_table: &str,
+    scylla_id_name: &str,
+) -> Result<(CDCLogReader, RemoteHandle<Result<(), anyhowError>>), AppError> {
+    let items_checkpoint_saver = Arc::new(
+        TableBackedCheckpointSaver::new(
+            state.database_session.clone(),
+            scylla_keyspace,
+            scylla_table,
+            604800,
+        )
+        .await
+        .unwrap(),
+    );
+
+    let (cdc_reader, cdc_future) = CDCLogReaderBuilder::new()
+        .session(state.database_session.clone())
+        .keyspace(scylla_keyspace)
+        .table_name(scylla_table)
+        .should_save_progress(true)
+        .should_load_progress(true)
+        .window_size(Duration::from_secs(60))
+        .safety_interval(Duration::from_secs(30))
+        .sleep_interval(Duration::from_secs(10))
+        .pause_between_saves(Duration::from_secs(10))
+        .consumer_factory(Arc::new(MeiliConsumerFactory {
+            meili_client: state.meili_client.clone(),
+            meili_index: scylla_table.to_string(),
+            scylla_id_name: scylla_id_name.to_string(),
+        }))
+        .checkpoint_saver(items_checkpoint_saver)
+        .build()
+        .await?;
+
+    Ok((cdc_reader, cdc_future))
+}
+
+pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
+    Item {
+        item_id: data
+            .get_value("item_id")
+            .as_ref()
+            .and_then(|v| v.as_uuid())
+            .expect("Missing item id"),
+        item_type: ItemType::try_from(
+            data.get_value("item_type")
+                .as_ref()
+                .and_then(|v| v.as_tinyint())
+                .expect("Missing item type")
+                .checked_abs()
+                .unwrap_or(0) as u8,
+        )
+        .unwrap_or(ItemType::Other)
+        .as_ref()
+        .to_string(),
+        title: data
+            .get_value("title")
+            .as_ref()
+            .and_then(|v| v.as_text())
+            .expect("Missing item title")
+            .to_string(),
+        condition: Condition::try_from(
+            data.get_value("condition")
+                .as_ref()
+                .and_then(|v| v.as_tinyint())
+                .expect("Missing item condition")
+                .checked_abs()
+                .unwrap_or(0) as u8,
+        )
+        .unwrap_or(Condition::Fair)
+        .as_ref()
+        .to_string(),
+        location: Location::try_from(
+            data.get_value("location")
+                .as_ref()
+                .and_then(|v| v.as_tinyint())
+                .expect("Missing item location")
+                .checked_abs()
+                .unwrap_or(0) as u8,
+        )
+        .unwrap_or(Location::CaryQuadEast)
+        .as_ref()
+        .to_string(),
+        description: data
+            .get_value("description")
+            .as_ref()
+            .and_then(|v| v.as_text())
+            .expect("Missing item description")
+            .to_string(),
+    }
 }

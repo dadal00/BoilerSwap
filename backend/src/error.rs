@@ -1,3 +1,4 @@
+use anyhow::Error as anyhowError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -83,6 +84,9 @@ pub enum AppError {
 
     #[error("MeiliError error: {0}")]
     MeiliError(#[from] meiliError),
+
+    #[error("Anyhow error: {0}")]
+    AnyhowError(#[from] anyhowError),
 }
 
 impl IntoResponse for AppError {

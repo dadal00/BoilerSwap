@@ -52,6 +52,8 @@ pub async fn reindex(
 
         items_index
             .add_documents(&convert_db_items(&row_vec), Some("item_id"))
+            .await?
+            .wait_for_completion(&meili_client, None, None)
             .await?;
 
         match paging_state_response.into_paging_control_flow() {

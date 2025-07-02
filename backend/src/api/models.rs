@@ -1,4 +1,4 @@
-use num_enum::{IntoPrimitive, TryFromPrimitive};
+use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, EnumString};
 use uuid::Uuid;
@@ -34,7 +34,7 @@ pub enum Action {
     Forgot,
 }
 
-#[derive(Debug, EnumString, AsRefStr, PartialEq)]
+#[derive(EnumString, AsRefStr, PartialEq)]
 pub enum RedisAction {
     #[strum(serialize = "auth_id")]
     Auth,
@@ -70,7 +70,7 @@ pub enum RedisAction {
 #[derive(Deserialize)]
 pub struct DummyClaims {}
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
+#[derive(TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
 #[repr(u8)]
 pub enum ItemType {
     #[strum(serialize = "Furniture")]
@@ -92,7 +92,7 @@ pub enum ItemType {
     Other = 5,
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
+#[derive(TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
 #[repr(u8)]
 pub enum Condition {
     #[strum(serialize = "Excellent")]
@@ -105,7 +105,7 @@ pub enum Condition {
     Fair = 2,
 }
 
-#[derive(IntoPrimitive, TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
+#[derive(TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
 #[repr(u8)]
 pub enum Location {
     #[strum(serialize = "CaryQuadEast")]

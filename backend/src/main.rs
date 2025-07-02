@@ -1,7 +1,10 @@
 use crate::{
-    api::handlers::{
-        api_token_check, authenticate_handler, default_handler, delete_handler, forgot_handler,
-        post_item_handler, verify_handler,
+    api::{
+        database::start_cdc,
+        handlers::{
+            api_token_check, authenticate_handler, default_handler, delete_handler, forgot_handler,
+            post_item_handler, verify_handler,
+        },
     },
     error::AppError,
     metrics::metrics_handler,
@@ -75,10 +78,16 @@ async fn main() -> Result<(), AppError> {
 
     meili_reindex_future.await??;
 
+    let (mut cdc_reader, cdc_future) =
+        start_cdc(state.clone(), "boiler_swap", "items", "item_id").await?;
+
+    info!("Server running on {}", addr);
+
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
-    info!("Server running on {}", addr);
 
-    Ok(())
+    cdc_reader.stop();
+
+    Ok(cdc_future.await?)
 }

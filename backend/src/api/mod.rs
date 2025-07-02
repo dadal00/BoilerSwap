@@ -1,3 +1,4 @@
+pub mod consumer;
 pub mod database;
 pub mod handlers;
 pub mod lock;
