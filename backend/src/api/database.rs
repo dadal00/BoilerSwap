@@ -1,6 +1,11 @@
 use super::{
     consumer::MeiliConsumerFactory,
     models::{Condition, Item, ItemPayload, ItemRow, ItemType, Location, RedisAccount},
+    schema::{
+        KEYSPACE,
+        columns::{items, users},
+        tables,
+    },
     utilities::{convert_i8_to_u8, get_seconds_until},
 };
 use crate::{error::AppError, state::AppState};
@@ -45,60 +50,134 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
 
     database_session
         .query_unpaged(
-            "CREATE KEYSPACE IF NOT EXISTS boiler_swap WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1}",
+            format!("CREATE KEYSPACE IF NOT EXISTS {} WITH REPLICATION = {{'class': 'SimpleStrategy', 'replication_factor': 1}}", KEYSPACE),
             &[],
         )
         .await?;
 
     database_session
         .query_unpaged(
-            "CREATE TABLE IF NOT EXISTS boiler_swap.users (
-                email text,
-                password_hash text,
-                locked boolean,
-                PRIMARY KEY(email)
+            format!(
+                "CREATE TABLE IF NOT EXISTS {}.{} (
+                {} {},
+                {} {},
+                {} {},
+                PRIMARY KEY({})
             )",
+                KEYSPACE,
+                tables::USERS,
+                users::EMAIL,
+                users::EMAIL_TYPE,
+                users::PASSWORD_HASH,
+                users::PASSWORD_HASH_TYPE,
+                users::LOCKED,
+                users::LOCKED_TYPE,
+                users::PRIMARY_KEY,
+            ),
             &[],
         )
         .await?;
 
     database_session
         .query_unpaged(
-            "CREATE TABLE IF NOT EXISTS boiler_swap.items (
-                item_id uuid,
-                item_type tinyint,
-                title text,
-                condition tinyint,
-                location tinyint,
-                description text,
-                PRIMARY KEY(item_id)
-            ) WITH cdc = {'enabled': true}",
+            format!(
+                "CREATE TABLE IF NOT EXISTS {}.{} (
+                {} {},
+                {} {},
+                {} {},
+                {} {},
+                {} {},
+                {} {},
+                PRIMARY KEY({})
+            ) WITH cdc = {{'enabled': true}}",
+                KEYSPACE,
+                tables::ITEMS,
+                items::ITEM_ID,
+                items::ITEM_ID_TYPE,
+                items::ITEM_TYPE,
+                items::ITEM_TYPE_TYPE,
+                items::TITLE,
+                items::TITLE_TYPE,
+                items::CONDITION,
+                items::CONDITION_TYPE,
+                items::LOCATION,
+                items::LOCATION_TYPE,
+                items::DESCRIPTION,
+                items::DESCRIPTION_TYPE,
+                items::PRIMARY_KEY,
+            ),
             &[],
         )
         .await?;
 
     let database_queries = DatabaseQueries {
         get_user: database_session
-            .prepare("SELECT password_hash, locked FROM boiler_swap.users WHERE email = ?")
+            .prepare(format!(
+                "SELECT {}, {} FROM {}.{} WHERE {} = ?",
+                users::PASSWORD_HASH,
+                users::LOCKED,
+                KEYSPACE,
+                tables::USERS,
+                users::PRIMARY_KEY
+            ))
             .await?,
         insert_user: database_session
-            .prepare("INSERT INTO boiler_swap.users (email, password_hash, locked) VALUES (?, ?, ?) USING TTL 126144000")
+            .prepare(format!(
+                "INSERT INTO {}.{} ({}, {}, {}) VALUES (?, ?, ?) USING TTL {}",
+                KEYSPACE,
+                tables::USERS,
+                users::EMAIL,
+                users::PASSWORD_HASH,
+                users::LOCKED,
+                users::TTL
+            ))
             .await?,
         check_lock: database_session
-            .prepare("SELECT locked FROM boiler_swap.users WHERE email = ?")
+            .prepare(format!(
+                "SELECT {} FROM {}.{} WHERE {} = ?",
+                users::LOCKED,
+                KEYSPACE,
+                tables::USERS,
+                users::PRIMARY_KEY
+            ))
             .await?,
         update_lock: database_session
-            .prepare("UPDATE boiler_swap.users SET locked = ? WHERE email = ?")
+            .prepare(format!(
+                "UPDATE {}.{} SET {} = ? WHERE {} = ?",
+                KEYSPACE,
+                tables::USERS,
+                users::LOCKED,
+                users::PRIMARY_KEY
+            ))
             .await?,
         unlock_account: database_session
-            .prepare("UPDATE boiler_swap.users SET locked = false, password_hash = ? WHERE email = ?")
+            .prepare(format!(
+                "UPDATE {}.{} SET {} = false, {} = ? WHERE {} = ?",
+                KEYSPACE,
+                tables::USERS,
+                users::LOCKED,
+                users::PASSWORD_HASH,
+                users::PRIMARY_KEY
+            ))
             .await?,
         insert_item: database_session
-            .prepare("INSERT INTO boiler_swap.items (item_id, item_type, title, condition, location, description) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?")
+            .prepare(format!(
+                "INSERT INTO {}.{} ({}, {}, {}, {}, {}, {}) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?",
+                KEYSPACE,
+                tables::ITEMS,
+                items::ITEM_ID,
+                items::ITEM_TYPE,
+                items::TITLE,
+                items::CONDITION,
+                items::LOCATION,
+                items::DESCRIPTION
+            ))
             .await?,
         get_items: database_session
-            .prepare(Statement::new("SELECT * FROM boiler_swap.items")
-            .with_page_size(100),)
+            .prepare(
+                Statement::new(format!("SELECT * FROM {}.{}", KEYSPACE, tables::ITEMS))
+                    .with_page_size(100),
+            )
             .await?,
     };
 
@@ -279,7 +358,7 @@ pub async fn start_cdc(
 }
 
 pub fn get_cdc_id(data: &CDCRow<'_>) -> Uuid {
-    data.get_value("item_id")
+    data.get_value(items::ITEM_ID)
         .as_ref()
         .and_then(|v| v.as_uuid())
         .expect("Missing item id")
@@ -307,19 +386,19 @@ pub fn get_cdc_text(data: &CDCRow<'_>, column: &str) -> String {
 pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
     Item {
         item_id: get_cdc_id(&data),
-        item_type: ItemType::try_from(get_cdc_u8(&data, "item_type"))
+        item_type: ItemType::try_from(get_cdc_u8(&data, items::ITEM_TYPE))
             .unwrap_or(ItemType::Other)
             .as_ref()
             .to_string(),
-        title: get_cdc_text(&data, "title"),
-        condition: Condition::try_from(get_cdc_u8(&data, "condition"))
+        title: get_cdc_text(&data, items::TITLE),
+        condition: Condition::try_from(get_cdc_u8(&data, items::CONDITION))
             .unwrap_or(Condition::Fair)
             .as_ref()
             .to_string(),
-        location: Location::try_from(get_cdc_u8(&data, "location"))
+        location: Location::try_from(get_cdc_u8(&data, items::LOCATION))
             .unwrap_or(Location::CaryQuadEast)
             .as_ref()
             .to_string(),
-        description: get_cdc_text(&data, "description"),
+        description: get_cdc_text(&data, items::DESCRIPTION),
     }
 }

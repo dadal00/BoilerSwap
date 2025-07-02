@@ -5,6 +5,7 @@ use crate::{
             api_token_check, authenticate_handler, default_handler, delete_handler, forgot_handler,
             post_item_handler, verify_handler,
         },
+        schema::{KEYSPACE, columns::items, tables},
     },
     error::AppError,
     metrics::metrics_handler,
@@ -79,7 +80,7 @@ async fn main() -> Result<(), AppError> {
     meili_reindex_future.await??;
 
     let (mut cdc_reader, cdc_future) =
-        start_cdc(state.clone(), "boiler_swap", "items", "item_id").await?;
+        start_cdc(state.clone(), KEYSPACE, tables::ITEMS, items::ITEM_ID).await?;
 
     info!("Server running on {}", addr);
 

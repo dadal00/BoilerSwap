@@ -1,6 +1,7 @@
 use super::{
     database::{DatabaseQueries, convert_db_items},
     models::ItemRow,
+    schema::{columns::items, tables},
 };
 use crate::{AppError, config::read_secret};
 use meilisearch_sdk::client::*;
@@ -31,8 +32,16 @@ pub async fn init_meilisearch(
     let session_clone = database_session.clone();
     let queries_clone = database_queries.clone();
 
-    let reindex_future =
-        tokio::spawn(async move { reindex(session_clone, queries_clone, client_clone).await });
+    let reindex_future = tokio::spawn(async move {
+        reindex(
+            session_clone,
+            queries_clone,
+            client_clone,
+            tables::ITEMS,
+            items::ITEM_ID,
+        )
+        .await
+    });
 
     Ok((meili_client, reindex_future))
 }
@@ -41,6 +50,8 @@ pub async fn reindex(
     database_session: Arc<Session>,
     database_queries: DatabaseQueries,
     meili_client: Arc<Client>,
+    index_name: &str,
+    item_id_name: &str,
 ) -> Result<(), AppError> {
     let mut paging_state = PagingState::start();
 
@@ -57,9 +68,9 @@ pub async fn reindex(
 
         add_items(
             meili_client.clone(),
-            "items",
+            index_name,
             &convert_db_items(&row_vec),
-            "item_id",
+            item_id_name,
         )
         .await?;
 
