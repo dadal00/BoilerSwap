@@ -5,9 +5,16 @@ use super::{
 use crate::{AppError, config::read_secret};
 use meilisearch_sdk::client::*;
 use scylla::{client::session::Session, response::PagingState};
-use std::{env, ops::ControlFlow, sync::Arc};
+use serde::Serialize;
+use std::{
+    env,
+    marker::{Send, Sync},
+    ops::ControlFlow,
+    sync::Arc,
+};
 use tokio::task::JoinHandle;
 use tracing::warn;
+use uuid::Uuid;
 
 pub async fn init_meilisearch(
     database_session: Arc<Session>,
@@ -35,8 +42,6 @@ pub async fn reindex(
     database_queries: DatabaseQueries,
     meili_client: Arc<Client>,
 ) -> Result<(), AppError> {
-    let items_index = meili_client.index("items");
-
     let mut paging_state = PagingState::start();
 
     loop {
@@ -50,11 +55,13 @@ pub async fn reindex(
             .rows::<ItemRow>()?
             .collect::<Result<Vec<_>, _>>()?;
 
-        items_index
-            .add_documents(&convert_db_items(&row_vec), Some("item_id"))
-            .await?
-            .wait_for_completion(&meili_client, None, None)
-            .await?;
+        add_items(
+            meili_client.clone(),
+            "items",
+            &convert_db_items(&row_vec),
+            "item_id",
+        )
+        .await?;
 
         match paging_state_response.into_paging_control_flow() {
             ControlFlow::Break(()) => {
@@ -63,4 +70,36 @@ pub async fn reindex(
             ControlFlow::Continue(new_paging_state) => paging_state = new_paging_state,
         }
     }
+}
+
+pub async fn add_items<T>(
+    meili_client: Arc<Client>,
+    index_name: &str,
+    items: &[T],
+    id_name: &str,
+) -> anyhow::Result<()>
+where
+    T: Serialize + Send + Sync,
+{
+    meili_client
+        .index(index_name)
+        .add_documents(items, Some(id_name))
+        .await?
+        .wait_for_completion(&meili_client, None, None)
+        .await?;
+    Ok(())
+}
+
+pub async fn delete_item(
+    meili_client: Arc<Client>,
+    index_name: &str,
+    key: Uuid,
+) -> anyhow::Result<()> {
+    meili_client
+        .index(index_name)
+        .delete_document(key)
+        .await?
+        .wait_for_completion(&meili_client, None, None)
+        .await?;
+    Ok(())
 }

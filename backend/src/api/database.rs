@@ -1,7 +1,7 @@
 use super::{
     consumer::MeiliConsumerFactory,
     models::{Condition, Item, ItemPayload, ItemRow, ItemType, Location, RedisAccount},
-    utilities::get_seconds_until,
+    utilities::{convert_i8_to_u8, get_seconds_until},
 };
 use crate::{error::AppError, state::AppState};
 use anyhow::Error as anyhowError;
@@ -221,16 +221,16 @@ pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
         .map(
             |(id, item_type_i8, title, condition_i8, location_i8, description)| Item {
                 item_id: *id,
-                item_type: ItemType::try_from(item_type_i8.checked_abs().unwrap_or(0) as u8)
+                item_type: ItemType::try_from(convert_i8_to_u8(item_type_i8))
                     .unwrap_or(ItemType::Other)
                     .as_ref()
                     .to_string(),
                 title: title.to_string(),
-                condition: Condition::try_from(condition_i8.checked_abs().unwrap_or(0) as u8)
+                condition: Condition::try_from(convert_i8_to_u8(condition_i8))
                     .unwrap_or(Condition::Fair)
                     .as_ref()
                     .to_string(),
-                location: Location::try_from(location_i8.checked_abs().unwrap_or(0) as u8)
+                location: Location::try_from(convert_i8_to_u8(location_i8))
                     .unwrap_or(Location::CaryQuadEast)
                     .as_ref()
                     .to_string(),
@@ -247,11 +247,10 @@ pub async fn start_cdc(
     scylla_id_name: &str,
 ) -> Result<(CDCLogReader, RemoteHandle<Result<(), anyhowError>>), AppError> {
     let items_checkpoint_saver = Arc::new(
-        TableBackedCheckpointSaver::new(
+        TableBackedCheckpointSaver::new_with_default_ttl(
             state.database_session.clone(),
             scylla_keyspace,
             scylla_table,
-            604800,
         )
         .await
         .unwrap(),
@@ -279,57 +278,48 @@ pub async fn start_cdc(
     Ok((cdc_reader, cdc_future))
 }
 
+pub fn get_cdc_id(data: &CDCRow<'_>) -> Uuid {
+    data.get_value("item_id")
+        .as_ref()
+        .and_then(|v| v.as_uuid())
+        .expect("Missing item id")
+}
+
+pub fn get_cdc_tinyint(data: &CDCRow<'_>, column: &str) -> i8 {
+    data.get_value(column)
+        .as_ref()
+        .and_then(|v| v.as_tinyint())
+        .expect("Missing tinyint attribute")
+}
+
+pub fn get_cdc_u8(data: &CDCRow<'_>, column: &str) -> u8 {
+    convert_i8_to_u8(&get_cdc_tinyint(data, column))
+}
+
+pub fn get_cdc_text(data: &CDCRow<'_>, column: &str) -> String {
+    data.get_value(column)
+        .as_ref()
+        .and_then(|v| v.as_text())
+        .expect("Missing text attribute")
+        .to_string()
+}
+
 pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
     Item {
-        item_id: data
-            .get_value("item_id")
+        item_id: get_cdc_id(&data),
+        item_type: ItemType::try_from(get_cdc_u8(&data, "item_type"))
+            .unwrap_or(ItemType::Other)
             .as_ref()
-            .and_then(|v| v.as_uuid())
-            .expect("Missing item id"),
-        item_type: ItemType::try_from(
-            data.get_value("item_type")
-                .as_ref()
-                .and_then(|v| v.as_tinyint())
-                .expect("Missing item type")
-                .checked_abs()
-                .unwrap_or(0) as u8,
-        )
-        .unwrap_or(ItemType::Other)
-        .as_ref()
-        .to_string(),
-        title: data
-            .get_value("title")
-            .as_ref()
-            .and_then(|v| v.as_text())
-            .expect("Missing item title")
             .to_string(),
-        condition: Condition::try_from(
-            data.get_value("condition")
-                .as_ref()
-                .and_then(|v| v.as_tinyint())
-                .expect("Missing item condition")
-                .checked_abs()
-                .unwrap_or(0) as u8,
-        )
-        .unwrap_or(Condition::Fair)
-        .as_ref()
-        .to_string(),
-        location: Location::try_from(
-            data.get_value("location")
-                .as_ref()
-                .and_then(|v| v.as_tinyint())
-                .expect("Missing item location")
-                .checked_abs()
-                .unwrap_or(0) as u8,
-        )
-        .unwrap_or(Location::CaryQuadEast)
-        .as_ref()
-        .to_string(),
-        description: data
-            .get_value("description")
+        title: get_cdc_text(&data, "title"),
+        condition: Condition::try_from(get_cdc_u8(&data, "condition"))
+            .unwrap_or(Condition::Fair)
             .as_ref()
-            .and_then(|v| v.as_text())
-            .expect("Missing item description")
             .to_string(),
+        location: Location::try_from(get_cdc_u8(&data, "location"))
+            .unwrap_or(Location::CaryQuadEast)
+            .as_ref()
+            .to_string(),
+        description: get_cdc_text(&data, "description"),
     }
 }

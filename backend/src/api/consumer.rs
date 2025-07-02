@@ -1,4 +1,7 @@
-use super::database::convert_cdc_item;
+use super::{
+    database::{convert_cdc_item, get_cdc_id},
+    meilisearch::{add_items, delete_item},
+};
 use async_trait::async_trait;
 use meilisearch_sdk::client::Client;
 use scylla_cdc::consumer::{CDCRow, Consumer, ConsumerFactory, OperationType};
@@ -29,25 +32,21 @@ impl Consumer for MeiliConsumer {
     async fn consume_cdc(&mut self, data: CDCRow<'_>) -> anyhow::Result<()> {
         match data.operation {
             OperationType::RowInsert => {
-                self.meili_client
-                    .index(&self.meili_index)
-                    .add_documents(&[convert_cdc_item(data)], Some(&self.scylla_id_name))
-                    .await?
-                    .wait_for_completion(&self.meili_client, None, None)
-                    .await?;
+                add_items(
+                    self.meili_client.clone(),
+                    &self.meili_index,
+                    &[convert_cdc_item(data)],
+                    &self.scylla_id_name,
+                )
+                .await?;
             }
             OperationType::RowDelete => {
-                self.meili_client
-                    .index(&self.meili_index)
-                    .delete_document(
-                        data.get_value(&self.scylla_id_name)
-                            .as_ref()
-                            .and_then(|v| v.as_uuid())
-                            .expect("Missing ID"),
-                    )
-                    .await?
-                    .wait_for_completion(&self.meili_client, None, None)
-                    .await?;
+                delete_item(
+                    self.meili_client.clone(),
+                    &self.meili_index,
+                    get_cdc_id(&data),
+                )
+                .await?;
             }
             _ => {}
         }

@@ -51,3 +51,7 @@ pub fn get_seconds_until(target_day: Weekday) -> i32 {
     let now = Utc::now().timestamp();
     (get_target_timestamp(target_day) - now).try_into().unwrap()
 }
+
+pub fn convert_i8_to_u8(payload: &i8) -> u8 {
+    payload.checked_abs().unwrap_or(0) as u8
+}
