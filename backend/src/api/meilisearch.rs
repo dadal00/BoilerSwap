@@ -4,7 +4,10 @@ use super::{
     schema::{columns::items, tables},
 };
 use crate::{AppError, config::read_secret};
-use meilisearch_sdk::client::*;
+use meilisearch_sdk::{
+    client::*,
+    settings::{MinWordSizeForTypos, Settings, TypoToleranceSettings},
+};
 use scylla::{client::session::Session, response::PagingState};
 use serde::Serialize;
 use std::{
@@ -31,6 +34,34 @@ pub async fn init_meilisearch(
     let client_clone = meili_client.clone();
     let session_clone = database_session.clone();
     let queries_clone = database_queries.clone();
+
+    let settings = Settings::new()
+        .with_ranking_rules([
+            "words",
+            "typo",
+            "proximity",
+            "exactness",
+            "attribute",
+            "sort",
+        ])
+        .with_distinct_attribute(Some(items::ITEM_ID))
+        .with_searchable_attributes([items::TITLE, items::DESCRIPTION])
+        .with_filterable_attributes([items::ITEM_TYPE, items::CONDITION, items::LOCATION])
+        .with_typo_tolerance(TypoToleranceSettings {
+            enabled: Some(true),
+            disable_on_attributes: None,
+            disable_on_words: None,
+            min_word_size_for_typos: Some(MinWordSizeForTypos {
+                one_typo: Some(5),
+                two_typos: Some(9),
+            }),
+        });
+
+    meili_client
+        .index(tables::ITEMS)
+        .set_settings(&settings)
+        .await
+        .unwrap();
 
     let reindex_future = tokio::spawn(async move {
         reindex(
