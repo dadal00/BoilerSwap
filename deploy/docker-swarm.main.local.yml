@@ -1,4 +1,27 @@
 services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.15@sha256:fe500cf9cca05cb9f027981583f28eccf17d35d94499c1f8b7b844e7418152fc
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    logging:
+      driver: loki
+      options:
+        mode: non-blocking
+        loki-url: ${LOKI_URL}
+        loki-batch-size: "10"
+        loki-timeout: "10s"
+        loki-retries: "3"
+    secrets:
+      - MEILI_MASTER_KEY
+    volumes:
+      - ./meili_data:/meili_data
+    networks:
+      - main_net
+    command: sh -c "meilisearch --master-key $$(cat /run/secrets/MEILI_MASTER_KEY)"
+
   redis:
     image: redis:8.0.2-alpine@sha256:48501c5ad00d5563bc30c075c7bcef41d7d98de3e9a1e6c752068c66f0a8463b
     networks:
@@ -54,6 +77,7 @@ services:
       - RUST_FROM_EMAIL_PASSWORD
       - RUST_FROM_EMAIL_SERVER
       - API_TOKEN
+      - MEILI_ADMIN_KEY
     logging:
       driver: loki
       options:
@@ -77,6 +101,7 @@ services:
       - PUBLIC_MAX_CHARS=${PUBLIC_MAX_CHARS}
       - PUBLIC_CODE_LENGTH=${PUBLIC_CODE_LENGTH}
       - SVELTE_URL=${SVELTE_URL}
+      - MEILI_URL=${MEILI_URL}
 
   svelte:
     image: boiler_svelte:latest
@@ -100,6 +125,7 @@ services:
       - main_net
     secrets:
       - API_TOKEN
+      - SEARCH_TOKEN
     ports:
       - "80:80"
       - "443:443"
@@ -115,7 +141,7 @@ services:
         loki-batch-size: "10"
         loki-timeout: "10s"
         loki-retries: "3"
-    command: sh -c "export API_TOKEN=$$(cat /run/secrets/API_TOKEN) && caddy run --config /etc/caddy/Caddyfile"
+    command: sh -c "export API_TOKEN=$$(cat /run/secrets/API_TOKEN) && export SEARCH_TOKEN=$$(cat /run/secrets/SEARCH_TOKEN) && caddy run --config /etc/caddy/Caddyfile"
     environment:
       - CADDY_LOG_ROTATE_DAYS=356
       - CADDY_LOG_ROTATE_SIZE=10000
@@ -124,6 +150,8 @@ services:
       - RUST_PORT=${RUST_PORT}
       - SVELTE_NAME=${SVELTE_NAME}
       - SVELTE_PORT=${SVELTE_PORT}
+      - MEILI_NAME=${MEILI_NAME}
+      - MEILI_PORT=${MEILI_PORT}
     volumes:
       - ./caddy/data:/data
       - ./caddy/config:/config
@@ -138,6 +166,12 @@ secrets:
   RUST_FROM_EMAIL_SERVER:
     external: true
   API_TOKEN:
+    external: true
+  MEILI_MASTER_KEY:
+    external: true
+  SEARCH_TOKEN:
+    external: true
+  MEILI_ADMIN_KEY:
     external: true
 
 networks:

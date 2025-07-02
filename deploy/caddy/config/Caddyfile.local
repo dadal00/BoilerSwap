@@ -12,9 +12,21 @@
 			crypto key verify {$API_TOKEN}
 			crypto key token name api_token
 		}
+
+		authorization policy verifySearch {
+			allow roles anonymous guest
+			set token sources cookie
+			crypto key verify {$SEARCH_TOKEN}
+			crypto key token name search_token
+		}
 	}
 }
 {$CADDY_DOMAIN} {
+
+	handle /search {
+		authorize with verifySearch
+		reverse_proxy {$MEILI_NAME}:{$MEILI_PORT}
+	}
 
 	handle /api/* {
 		authorize with verifyAPI
