@@ -109,7 +109,8 @@ services:
       - main_net
     secrets:
       - API_TOKEN
-    command: sh -c "export API_TOKEN=$$(cat /run/secrets/API_TOKEN) && node build"
+      - SEARCH_TOKEN
+    command: sh -c "export API_TOKEN=$$(cat /run/secrets/API_TOKEN) && export SEARCH_TOKEN=$$(cat /run/secrets/SEARCH_TOKEN) && node build"
     deploy:
       mode: global
       restart_policy:
