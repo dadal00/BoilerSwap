@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ProductCard from '$lib/components/ProductCard.svelte'
+	import Products from '$lib/components/browse/Products.svelte'
 	import { ItemTypeIterable, LocationIterable, LocationLabels } from '$lib/models'
 </script>
 
@@ -60,40 +60,7 @@
 <section class="py-16 px-6">
 	<div class="container mx-auto">
 		<h2 class="text-2xl font-bold text-center mb-8">Available Items</h2>
-		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			<ProductCard
-				emoji="chair"
-				title="Desk Chair - Great Condition"
-				category="Furniture"
-				description="Moving out tomorrow! Comfortable office chair, barely used. Perfect for studying."
-				location="CaryQuadEast"
-				expiration="8 hours"
-				condition="Excellent"
-				expirationColor="red"
-			></ProductCard>
-
-			<ProductCard
-				emoji="snowflake"
-				title="Mini Fridge - Works Perfect"
-				category="Electronics"
-				description="Compact fridge, great for dorm rooms. Clean and in excellent working condition."
-				location="WileyHall"
-				expiration="3 days"
-				condition="Fair"
-				expirationColor="green"
-			></ProductCard>
-
-			<ProductCard
-				emoji="books"
-				title="CS 180 Textbook + Notes"
-				category="Books"
-				description="Java programming textbook with my handwritten notes. Great for future CS students!"
-				location="HarrisonHall"
-				expiration="1 day"
-				condition="Good"
-				expirationColor="yellow"
-			></ProductCard>
-		</div>
+		<Products></Products>
 
 		<div class="text-center mt-8">
 			<a
@@ -105,13 +72,6 @@
 		</div>
 	</div>
 </section>
-
-<a
-	href="post"
-	class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-white shadow-lg transition-all hover:scale-110 flex items-center justify-center"
->
-	<span class="text-2xl">+</span>
-</a>
 
 <style lang="postcss">
 	@reference "tailwindcss";

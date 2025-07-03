@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { PUBLIC_MAX_CHARS } from '$env/static/public'
 
-	let { title_value = $bindable() } = $props<{ title_value: string }>()
+	let { titleValue = $bindable() } = $props<{ titleValue: string }>()
 </script>
 
 Title *
@@ -10,6 +10,6 @@ Title *
 	required
 	placeholder="e.g., IKEA Desk Chair - Great Condition"
 	class="w-full px-4 py-2 border rounded-lg"
-	bind:value={title_value}
+	bind:value={titleValue}
 	maxlength={Number(PUBLIC_MAX_CHARS)}
 />

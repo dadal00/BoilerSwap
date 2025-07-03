@@ -1,3 +1,15 @@
+export type TokenPayload = {
+	token: string
+}
+
+export const TabOptionsIterable = [
+	'Login',
+	'Signup',
+	'Reset',
+  ] as const;
+
+export type TabOptions = typeof TabOptionsIterable[number];
+
 export type AccountAction = 'login' | 'signup'
 
 export type Account = {

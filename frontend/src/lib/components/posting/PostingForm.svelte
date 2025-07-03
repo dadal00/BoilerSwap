@@ -10,7 +10,7 @@
 	import TitleField from './fields/TitleField.svelte'
 	import PostingFormButton from './PostingFormButton.svelte'
 
-	let item_type: ItemType = $state('Furniture')
+	let itemType: ItemType = $state('Furniture')
 	let condition: Condition = $state('Fair')
 	let title: string = $state('')
 	let description: string = $state('')
@@ -28,7 +28,7 @@
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			credentials: 'include',
-			body: JSON.stringify({ item_type, condition, title, description, location })
+			body: JSON.stringify({ itemType, condition, title, description, location })
 		})
 
 		if (!response.ok) {
@@ -45,31 +45,31 @@
 		<div class="space-y-6">
 			<div>
 				<label class="block text-sm font-medium mb-2">
-					<ItemTypeField bind:item_type_value={item_type} />
+					<ItemTypeField bind:itemTypeValue={itemType} />
 				</label>
 			</div>
 
 			<div>
 				<label class="block text-sm font-medium mb-2">
-					<TitleField bind:title_value={title} />
+					<TitleField bind:titleValue={title} />
 				</label>
 			</div>
 
 			<div>
 				<label class="block text-sm font-medium mb-2">
-					<ConditionField bind:condition_value={condition} />
+					<ConditionField bind:conditionValue={condition} />
 				</label>
 			</div>
 
 			<div>
 				<label class="block text-sm font-medium mb-2">
-					<DescriptionField bind:description_value={description} />
+					<DescriptionField bind:descriptionValue={description} />
 				</label>
 			</div>
 
 			<div>
 				<label class="block text-sm font-medium mb-2">
-					<LocationField bind:location_value={location} />
+					<LocationField bind:locationValue={location} />
 				</label>
 			</div>
 

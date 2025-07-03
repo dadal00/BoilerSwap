@@ -2,6 +2,7 @@ import { goto } from '$app/navigation'
 import { PUBLIC_BACKEND_URL } from '$env/static/public'
 import { Status, type Account } from '$lib/models'
 import { appState } from '$lib/AppState.svelte'
+import { fetchBackend } from './utils'
 
 export async function forgot(email: string): Promise<void> {
 	if (appState.isLimited()) {
@@ -15,18 +16,8 @@ export async function forgot(email: string): Promise<void> {
 
 	try {
 		appState.setLastAttempt(Date.now())
-		const response = await fetch(PUBLIC_BACKEND_URL + '/forgot', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify({ token: email })
-		})
-
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`)
-		}
+		
+		await fetchBackend('/forgot', { token: email })
 
 		appState.setStatus(Status.isVerifyingForgot, true)
 		goto('/auth/verify/forget')
@@ -53,18 +44,8 @@ export async function login(account: Account): Promise<void> {
 
 	try {
 		appState.setLastAttempt(Date.now())
-		const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify(account)
-		})
 
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`)
-		}
+		await fetchBackend('/authenticate', account)
 
 		appState.setStatus(Status.isVerifying, true)
 		goto('/auth/verify')
@@ -95,18 +76,8 @@ export async function signup(account: Account, confirmPassword: string): Promise
 
 	try {
 		appState.setLastAttempt(Date.now())
-		const response = await fetch(PUBLIC_BACKEND_URL + '/authenticate', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify(account)
-		})
 
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`)
-		}
+		await fetchBackend('/authenticate', account)
 
 		appState.setStatus(Status.isVerifying, true)
 		goto('/auth/verify')
@@ -131,18 +102,8 @@ export async function verify(auth_code: string): Promise<void> {
 
 	try {
 		appState.setLastAttempt(Date.now())
-		const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify({ token: auth_code })
-		})
 
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`)
-		}
+		await fetchBackend('/verify', { token: auth_code })
 
 		appState.setStatus(Status.isSignedIn, true)
 		goto('/browse')
@@ -167,18 +128,8 @@ export async function verify_forget(auth_code: string) {
 
 	try {
 		appState.setLastAttempt(Date.now())
-		const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify({ token: auth_code })
-		})
 
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`)
-		}
+		await fetchBackend('/verify', { token: auth_code })
 
 		appState.setStatus(Status.isVerifyingUpdate, true)
 		goto('/auth/verify/update')
@@ -203,18 +154,8 @@ export async function update(new_password: string) {
 
 	try {
 		appState.setLastAttempt(Date.now())
-		const response = await fetch(PUBLIC_BACKEND_URL + '/verify', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			credentials: 'include',
-			body: JSON.stringify({ token: new_password })
-		})
 
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`)
-		}
+		await fetchBackend('/verify', { token: new_password })
 
 		appState.setStatus(Status.isSignedIn, true)
 		goto('/browse')
@@ -230,6 +171,7 @@ export async function signout() {
 
 	if (appState.getStatus(Status.isSignedIn)) {
 		appState.setLastAttempt(Date.now())
+
 		const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
 			method: 'DELETE',
 			credentials: 'include'

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ConditionIterable, ConditionLabels, type Condition } from '$lib/models'
 
-	let { condition_value = $bindable() } = $props<{ condition_value: Condition }>()
+	let { conditionValue = $bindable() } = $props<{ conditionValue: Condition }>()
 </script>
 
 Condition *
@@ -10,7 +10,7 @@ Condition *
 		<label class="flex items-center">
 			<input
 				type="radio"
-				bind:group={condition_value}
+				bind:group={conditionValue}
 				name="condition"
 				value={option}
 				required
