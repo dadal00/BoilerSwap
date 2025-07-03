@@ -44,7 +44,7 @@ impl Consumer for MeiliConsumer {
                 delete_item(
                     self.meili_client.clone(),
                     &self.meili_index,
-                    get_cdc_id(&data),
+                    get_cdc_id(&data, &self.scylla_id_name),
                 )
                 .await?;
             }

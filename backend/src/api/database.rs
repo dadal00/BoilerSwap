@@ -357,8 +357,8 @@ pub async fn start_cdc(
     Ok((cdc_reader, cdc_future))
 }
 
-pub fn get_cdc_id(data: &CDCRow<'_>) -> Uuid {
-    data.get_value(items::ITEM_ID)
+pub fn get_cdc_id(data: &CDCRow<'_>, id_name: &str) -> Uuid {
+    data.get_value(id_name)
         .as_ref()
         .and_then(|v| v.as_uuid())
         .expect("Missing item id")
@@ -385,7 +385,7 @@ pub fn get_cdc_text(data: &CDCRow<'_>, column: &str) -> String {
 
 pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
     Item {
-        item_id: get_cdc_id(&data),
+        item_id: get_cdc_id(&data, items::ITEM_ID),
         item_type: ItemType::try_from(get_cdc_u8(&data, items::ITEM_TYPE))
             .unwrap_or(ItemType::Other)
             .as_ref()
