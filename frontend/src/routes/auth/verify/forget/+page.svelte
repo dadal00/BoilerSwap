@@ -4,7 +4,7 @@
 	import { appState } from '$lib/AppState.svelte'
 	import { Status } from '$lib/models'
 	import { onDestroy, onMount } from 'svelte'
-	import { verify_forget } from '$lib/auth'
+	import { verify_forget } from '$lib/helpers/auth'
 
 	let auth_code: string = $state('')
 	let timer: number | null = null

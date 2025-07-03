@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { appState } from '$lib/AppState.svelte'
-	import { signout } from '$lib/auth'
+	import { signout } from '$lib/helpers/auth'
 	import { Status } from '$lib/models'
 </script>
 

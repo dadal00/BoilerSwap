@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Email from '$lib/components/auth/Email.svelte'
 	import Password from '$lib/components/auth/Password.svelte'
-	import { login, signup, forgot } from '$lib/auth'
+	import { login, signup, forgot } from '$lib/helpers/auth'
 	import type { Account, TabOptions } from '$lib/models'
 
 	let { activeTabValue = $bindable(), showTab } = $props<{

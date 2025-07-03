@@ -4,7 +4,7 @@
 	import { appState } from '$lib/AppState.svelte'
 	import { Status } from '$lib/models'
 	import { onDestroy, onMount } from 'svelte'
-	import { update } from '$lib/auth'
+	import { update } from '$lib/helpers/auth'
 
 	let new_password: string = $state('')
 	let timer: number | null = null
