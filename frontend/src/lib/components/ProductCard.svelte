@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		ConditionEmojis,
-		ConditionLabels,
 		EmojiLabels,
 		LocationLabels,
 		type Condition,

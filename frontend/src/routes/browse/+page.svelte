@@ -48,7 +48,7 @@
 			expiration="8 hours"
 			condition="Good"
 			expirationColor="red"
-		></ProductCard>
+		/>
 
 		<ProductCard
 			emoji="snowflake"
@@ -59,7 +59,7 @@
 			expiration="2 days"
 			condition="Good"
 			expirationColor="green"
-		></ProductCard>
+		/>
 
 		<ProductCard
 			emoji="books"
@@ -70,7 +70,7 @@
 			expiration="2 days"
 			condition="Good"
 			expirationColor="green"
-		></ProductCard>
+		/>
 
 		<ProductCard
 			emoji="pan"
@@ -81,7 +81,7 @@
 			expiration="3 hours left"
 			condition="Good"
 			expirationColor="red"
-		></ProductCard>
+		/>
 
 		<ProductCard
 			emoji="monitor"
@@ -92,7 +92,7 @@
 			expiration="2 days"
 			condition="Good"
 			expirationColor="green"
-		></ProductCard>
+		/>
 
 		<ProductCard
 			emoji="decor"
@@ -103,7 +103,7 @@
 			expiration="2 days"
 			condition="Good"
 			expirationColor="green"
-		></ProductCard>
+		/>
 	</div>
 </div>
 

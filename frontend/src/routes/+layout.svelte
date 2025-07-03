@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css'
-	import NavBar from '$lib/components/NavBar.svelte'
-	import Footer from '$lib/components/Footer.svelte'
+	import NavBar from '$lib/components/layout/NavBar.svelte'
+	import Footer from '$lib/components/layout/Footer.svelte'
 	import { afterNavigate } from '$app/navigation'
 	import { appState } from '$lib/AppState.svelte'
 	import { Status } from '$lib/models'
