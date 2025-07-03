@@ -21,7 +21,6 @@
 				<a href="post" class="text-gray-600 hover:text-gray-900">Post Item</a>
 				<a href="how-it-works" class="text-gray-600 hover:text-gray-900">How It Works</a>
 				<a href="about" class="text-gray-600 hover:text-gray-900">About</a>
-				<a href="contact" class="text-gray-600 hover:text-gray-900">Contact Us</a>
 			</nav>
 
 			<div class="flex items-center space-x-3">

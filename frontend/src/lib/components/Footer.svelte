@@ -21,7 +21,6 @@
 				<ul class="space-y-2 text-gray-400">
 					<li><a href="/how-it-works" class="hover:text-white">How It Works</a></li>
 					<li><a href="/about" class="hover:text-white">About</a></li>
-					<li><a href="/contact" class="hover:text-white">Contact Us</a></li>
 					<li><a href="/browse" class="hover:text-white">Browse Items</a></li>
 				</ul>
 			</div>
@@ -29,10 +28,7 @@
 			<div>
 				<h4 class="font-semibold mb-4">Resources</h4>
 				<ul class="space-y-2 text-gray-400">
-					<li><a href="/safety-guidelines" class="hover:text-white">Safety Guidelines</a></li>
 					<li><a href="/faq" class="hover:text-white">FAQ</a></li>
-					<li><a href="/disclaimer" class="hover:text-white">Terms of Service</a></li>
-					<li><a href="/help-center" class="hover:text-white">Help Center</a></li>
 				</ul>
 			</div>
 
@@ -41,8 +37,6 @@
 				<ul class="space-y-2 text-gray-400">
 					<li><a href="/auth" class="hover:text-white">Login</a></li>
 					<li><a href="/auth" class="hover:text-white">Create Account</a></li>
-					<li><a href="/help-center" class="hover:text-white">Help Center</a></li>
-					<li><a href="/report-issue" class="hover:text-white">Report Issue</a></li>
 				</ul>
 			</div>
 		</div>

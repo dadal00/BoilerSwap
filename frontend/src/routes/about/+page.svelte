@@ -128,21 +128,4 @@
 			</div>
 		</div>
 	</section>
-
-	<section class="text-center">
-		<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-8">
-			<h2 class="text-2xl font-bold mb-4 flex items-center justify-center">
-				<span class="text-3xl mr-3">📧</span>
-				Get in Touch
-			</h2>
-			<p class="text-gray-600 mb-6">
-				Have questions, suggestions, or want to get involved? We'd love to hear from you!
-			</p>
-			<a
-				href="contact"
-				class="bg-yellow-400 text-gray-800 hover:bg-yellow-500 px-8 py-3 rounded-lg font-medium"
-				>Contact Us</a
-			>
-		</div>
-	</section>
 </div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ProductCard from '$lib/components/ProductCard.svelte'
+	import { ItemTypeIterable, LocationIterable, LocationLabels } from '$lib/models'
 </script>
 
 <svelte:head>
@@ -19,25 +21,16 @@
 				<span class="absolute left-3 top-1/2 transform -translate-y-1/2">🔍</span>
 			</div>
 			<select class="px-4 py-3 border rounded-lg">
-				<option>All Categories</option>
-				<option>Furniture</option>
-				<option>Electronics</option>
-				<option>Books</option>
-				<option>Kitchen</option>
-				<option>Clothing</option>
+				<option value="*">All Categories</option>
+				{#each ItemTypeIterable as category}
+					<option value={category}>{category}</option>
+				{/each}
 			</select>
 			<select class="px-4 py-3 border rounded-lg">
-				<option>All Locations</option>
-				<option>Wiley Hall</option>
-				<option>Cary Quad</option>
-				<option>Harrison Hall</option>
-				<option>Earhart</option>
-			</select>
-			<select class="px-4 py-3 border rounded-lg">
-				<option>Sort by</option>
-				<option>Newest First</option>
-				<option>Most Urgent</option>
-				<option>By Location</option>
+				<option value="*">All Locations</option>
+				{#each LocationIterable as category}
+					<option value={category}>{LocationLabels[category]}</option>
+				{/each}
 			</select>
 		</div>
 		<div class="flex items-center justify-between mt-4 pt-4 border-t">
@@ -46,123 +39,71 @@
 	</div>
 
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-		<div
-			class="bg-white rounded-lg shadow-sm border-l-4 border-l-red-500 overflow-hidden card-hover urgent-pulse"
-		>
-			<div class="h-48 bg-gray-200 flex items-center justify-center">
-				<div class="text-6xl">🪑</div>
-			</div>
-			<div class="p-6">
-				<div class="flex justify-between items-start mb-2">
-					<h3 class="font-semibold text-lg">Desk Chair - Great Condition</h3>
-					<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Furniture</span>
-				</div>
-				<p class="text-gray-600 text-sm mb-4">
-					Moving out tomorrow! Comfortable office chair, barely used.
-				</p>
-				<div class="flex items-center text-sm text-gray-500 mb-2">
-					<span class="mr-1">📍</span>Cary Quad - East
-				</div>
-				<div class="flex items-center text-sm text-red-600 font-medium">
-					<span class="mr-1">⏰</span>Expires in 8 hours
-				</div>
-			</div>
-		</div>
+		<ProductCard
+			emoji="chair"
+			title="Desk Chair - Great Condition"
+			category="Furniture"
+			description="Moving out tomorrow! Comfortable office chair, barely used."
+			location="CaryQuadEast"
+			expiration="8 hours"
+			condition="Good"
+			expirationColor="red"
+		></ProductCard>
 
-		<div
-			class="bg-white rounded-lg shadow-sm border-l-4 border-l-yellow-500 overflow-hidden card-hover"
-		>
-			<div class="h-48 bg-gray-200 flex items-center justify-center">
-				<div class="text-6xl">❄️</div>
-			</div>
-			<div class="p-6">
-				<div class="flex justify-between items-start mb-2">
-					<h3 class="font-semibold text-lg">Mini Fridge - Works Perfect</h3>
-					<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Electronics</span>
-				</div>
-				<p class="text-gray-600 text-sm mb-4">
-					Compact fridge, great for dorm rooms. Clean condition.
-				</p>
-				<div class="flex items-center text-sm text-gray-500 mb-2">
-					<span class="mr-1">📍</span>Wiley Hall
-				</div>
-			</div>
-		</div>
+		<ProductCard
+			emoji="snowflake"
+			title="Mini Fridge - Works Perfect"
+			category="Electronics"
+			description="Compact fridge, great for dorm rooms. Clean condition."
+			location="WileyHall"
+			expiration="2 days"
+			condition="Good"
+			expirationColor="green"
+		></ProductCard>
 
-		<div
-			class="bg-white rounded-lg shadow-sm border-l-4 border-l-green-500 overflow-hidden card-hover"
-		>
-			<div class="h-48 bg-gray-200 flex items-center justify-center">
-				<div class="text-6xl">📚</div>
-			</div>
-			<div class="p-6">
-				<div class="flex justify-between items-start mb-2">
-					<h3 class="font-semibold text-lg">CS 180 Textbook + Notes</h3>
-					<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Books</span>
-				</div>
-				<p class="text-gray-600 text-sm mb-4">Java programming textbook with handwritten notes.</p>
-				<div class="flex items-center text-sm text-gray-500 mb-2">
-					<span class="mr-1">📍</span>Harrison Hall
-				</div>
-			</div>
-		</div>
+		<ProductCard
+			emoji="books"
+			title="CS 180 Textbook + Notes"
+			category="Books"
+			description="Java programming textbook with handwritten notes."
+			location="HarrisonHall"
+			expiration="2 days"
+			condition="Good"
+			expirationColor="green"
+		></ProductCard>
 
-		<div
-			class="bg-white rounded-lg shadow-sm border-l-4 border-l-red-500 overflow-hidden card-hover urgent-pulse"
-		>
-			<div class="h-48 bg-gray-200 flex items-center justify-center">
-				<div class="text-6xl">🍳</div>
-			</div>
-			<div class="p-6">
-				<div class="flex justify-between items-start mb-2">
-					<h3 class="font-semibold text-lg">Kitchen Supplies Set</h3>
-					<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Kitchen</span>
-				</div>
-				<p class="text-gray-600 text-sm mb-4">Pots, pans, utensils - everything you need!</p>
-				<div class="flex items-center text-sm text-gray-500 mb-2">
-					<span class="mr-1">📍</span>Third Street Suites
-				</div>
-				<div class="flex items-center text-sm text-red-600 font-medium">
-					<span class="mr-1">⏰</span>3 hours left
-				</div>
-			</div>
-		</div>
+		<ProductCard
+			emoji="pan"
+			title="Kitchen Supplies Set"
+			category="Kitchen"
+			description="Pots, pans, utensils - everything you need!"
+			location="ThirdStreetSuites"
+			expiration="3 hours left"
+			condition="Good"
+			expirationColor="red"
+		></ProductCard>
 
-		<div
-			class="bg-white rounded-lg shadow-sm border-l-4 border-l-yellow-500 overflow-hidden card-hover"
-		>
-			<div class="h-48 bg-gray-200 flex items-center justify-center">
-				<div class="text-6xl">🖥️</div>
-			</div>
-			<div class="p-6">
-				<div class="flex justify-between items-start mb-2">
-					<h3 class="font-semibold text-lg">Gaming Monitor 24"</h3>
-					<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Electronics</span>
-				</div>
-				<p class="text-gray-600 text-sm mb-4">1080p, 144Hz, perfect for gaming or studying.</p>
-				<div class="flex items-center text-sm text-gray-500 mb-2">
-					<span class="mr-1">📍</span>Hillenbrand Hall
-				</div>
-			</div>
-		</div>
+		<ProductCard
+			emoji="monitor"
+			title="Gaming Monitor 24"
+			category="Electronics"
+			description="1080p, 144Hz, perfect for gaming or studying."
+			location="HillenbrandHall"
+			expiration="2 days"
+			condition="Good"
+			expirationColor="green"
+		></ProductCard>
 
-		<div
-			class="bg-white rounded-lg shadow-sm border-l-4 border-l-green-500 overflow-hidden card-hover"
-		>
-			<div class="h-48 bg-gray-200 flex items-center justify-center">
-				<div class="text-6xl">🎨</div>
-			</div>
-			<div class="p-6">
-				<div class="flex justify-between items-start mb-2">
-					<h3 class="font-semibold text-lg">Dorm Room Decorations</h3>
-					<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Decor</span>
-				</div>
-				<p class="text-gray-600 text-sm mb-4">Posters, fairy lights, plants, and more.</p>
-				<div class="flex items-center text-sm text-gray-500 mb-2">
-					<span class="mr-1">📍</span>Earhart Hall
-				</div>
-			</div>
-		</div>
+		<ProductCard
+			emoji="decor"
+			title="Dorm Room Decorations"
+			category="Decor"
+			description="Posters, fairy lights, plants, and more."
+			location="EarhartHall"
+			expiration="2 days"
+			condition="Good"
+			expirationColor="green"
+		></ProductCard>
 	</div>
 </div>
 

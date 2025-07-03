@@ -106,12 +106,6 @@
 			<div class="space-y-4">
 				<div>
 					<label class="block text-sm font-medium mb-2">
-						Full Name
-						<input type="text" placeholder="John Doe" class="w-full px-4 py-2 border rounded-lg" />
-					</label>
-				</div>
-				<div>
-					<label class="block text-sm font-medium mb-2">
 						Purdue Email Address
 						<input
 							type="email"

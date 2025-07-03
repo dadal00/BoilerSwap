@@ -178,21 +178,4 @@
 			</div>
 		{/if}
 	</div>
-
-	<div class="mt-12 bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
-		<h2 class="text-2xl font-bold mb-4">Still Have Questions?</h2>
-		<p class="text-gray-600 mb-6">Can't find what you're looking for? We're here to help!</p>
-		<div class="flex flex-col sm:flex-row gap-4 justify-center">
-			<a
-				href="contact"
-				class="bg-yellow-400 text-gray-800 hover:bg-yellow-500 px-8 py-3 rounded-lg font-medium"
-				>Contact Support</a
-			>
-			<a
-				href="help-center"
-				class="border border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-3 rounded-lg font-medium"
-				>Help Center</a
-			>
-		</div>
-	</div>
 </div>
