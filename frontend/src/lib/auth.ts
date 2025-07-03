@@ -16,7 +16,7 @@ export async function forgot(email: string): Promise<void> {
 
 	try {
 		appState.setLastAttempt(Date.now())
-		
+
 		await fetchBackend('/forgot', { token: email })
 
 		appState.setStatus(Status.isVerifyingForgot, true)

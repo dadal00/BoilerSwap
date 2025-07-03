@@ -2,13 +2,9 @@ export type TokenPayload = {
 	token: string
 }
 
-export const TabOptionsIterable = [
-	'Login',
-	'Signup',
-	'Reset',
-  ] as const;
+export const TabOptionsIterable = ['Login', 'Signup', 'Reset'] as const
 
-export type TabOptions = typeof TabOptionsIterable[number];
+export type TabOptions = (typeof TabOptionsIterable)[number]
 
 export type AccountAction = 'login' | 'signup'
 
@@ -32,29 +28,25 @@ export const ItemTypeIterable = [
 	'Kitchen',
 	'Clothing',
 	'Decor',
-	'Other',
-  ] as const;
-  
-export type ItemType = typeof ItemTypeIterable[number];
+	'Other'
+] as const
 
-export const ConditionIterable = [
-	'Excellent',
-	'Good',
-	'Fair',
-  ] as const;
-  
-export type Condition = typeof ConditionIterable[number];
+export type ItemType = (typeof ItemTypeIterable)[number]
+
+export const ConditionIterable = ['Excellent', 'Good', 'Fair'] as const
+
+export type Condition = (typeof ConditionIterable)[number]
 
 export const ConditionEmojis: Record<Condition, string> = {
 	Excellent: '✨',
 	Good: '✅',
-	Fair: '🟡',
+	Fair: '🟡'
 }
 
 export const ConditionLabels: Record<Condition, string> = {
 	Excellent: 'Excellent - Like new, minimal wear',
 	Good: 'Good - Some wear but fully functional',
-	Fair: 'Fair - Noticeable wear but still usable',
+	Fair: 'Fair - Noticeable wear but still usable'
 }
 
 export type Emoji = 'chair' | 'snowflake' | 'books' | 'pan' | 'monitor' | 'decor'
@@ -74,10 +66,10 @@ export const LocationIterable = [
 	'HarrisonHall',
 	'EarhartHall',
 	'HillenbrandHall',
-	'ThirdStreetSuites',
-  ] as const;
-  
-export type Location = typeof LocationIterable[number];
+	'ThirdStreetSuites'
+] as const
+
+export type Location = (typeof LocationIterable)[number]
 
 export const LocationLabels: Record<Location, string> = {
 	CaryQuadEast: 'Cary Quad - East',
@@ -85,8 +77,8 @@ export const LocationLabels: Record<Location, string> = {
 	HarrisonHall: 'Harrison Hall',
 	EarhartHall: 'Earhart Hall',
 	HillenbrandHall: 'Hillenbrand Hall',
-	ThirdStreetSuites: 'Third Street Suites',
-};
+	ThirdStreetSuites: 'Third Street Suites'
+}
 
 export type Product = {
 	item_type: ItemType
