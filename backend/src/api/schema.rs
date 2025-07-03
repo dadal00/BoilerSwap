@@ -3,6 +3,7 @@ pub const KEYSPACE: &str = "boiler_swap";
 pub mod tables {
     pub const USERS: &str = "users";
     pub const ITEMS: &str = "items";
+    pub const CDC: &str = "cdc";
 }
 
 pub mod columns {

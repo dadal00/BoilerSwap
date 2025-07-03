@@ -329,7 +329,7 @@ pub async fn start_cdc(
         TableBackedCheckpointSaver::new_with_default_ttl(
             state.database_session.clone(),
             scylla_keyspace,
-            scylla_table,
+            tables::CDC,
         )
         .await
         .unwrap(),
