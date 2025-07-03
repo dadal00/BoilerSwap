@@ -90,6 +90,9 @@ pub enum ItemType {
 
     #[strum(serialize = "Other")]
     Other = 5,
+
+    #[strum(serialize = "Decor")]
+    Decor = 6,
 }
 
 #[derive(TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]

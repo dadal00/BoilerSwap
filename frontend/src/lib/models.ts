@@ -11,17 +11,70 @@ export type Verification = {
 	code: string
 }
 
-export type ItemType = 'Furniture' | 'Electronics' | 'Books' | 'Kitchen' | 'Clothing' | 'Other'
+export type ExpirationColor = 'green' | 'yellow' | 'red'
 
-export type Condition = 'Excellent' | 'Good' | 'Fair'
+export const ItemTypeIterable = [
+	'Furniture',
+	'Electronics',
+	'Books',
+	'Kitchen',
+	'Clothing',
+	'Decor',
+	'Other',
+  ] as const;
+  
+export type ItemType = typeof ItemTypeIterable[number];
 
-export type Location =
-	| 'CaryQuadEast'
-	| 'WileyHall'
-	| 'HarrisonHall'
-	| 'EarhartHall'
-	| 'HillenbrandHall'
-	| 'ThirdStreetSuites'
+export const ConditionIterable = [
+	'Excellent',
+	'Good',
+	'Fair',
+  ] as const;
+  
+export type Condition = typeof ConditionIterable[number];
+
+export const ConditionEmojis: Record<Condition, string> = {
+	Excellent: '✨',
+	Good: '✅',
+	Fair: '🟡',
+}
+
+export const ConditionLabels: Record<Condition, string> = {
+	Excellent: 'Excellent - Like new, minimal wear',
+	Good: 'Good - Some wear but fully functional',
+	Fair: 'Fair - Noticeable wear but still usable',
+}
+
+export type Emoji = 'chair' | 'snowflake' | 'books' | 'pan' | 'monitor' | 'decor'
+
+export const EmojiLabels: Record<Emoji, string> = {
+	chair: '🪑',
+	snowflake: '❄️',
+	books: '📚',
+	pan: '🍳',
+	monitor: '🖥️',
+	decor: '🎨'
+}
+
+export const LocationIterable = [
+	'CaryQuadEast',
+	'WileyHall',
+	'HarrisonHall',
+	'EarhartHall',
+	'HillenbrandHall',
+	'ThirdStreetSuites',
+  ] as const;
+  
+export type Location = typeof LocationIterable[number];
+
+export const LocationLabels: Record<Location, string> = {
+	CaryQuadEast: 'Cary Quad - East',
+	WileyHall: 'Wiley Hall',
+	HarrisonHall: 'Harrison Hall',
+	EarhartHall: 'Earhart Hall',
+	HillenbrandHall: 'Hillenbrand Hall',
+	ThirdStreetSuites: 'Third Street Suites',
+};
 
 export type Product = {
 	item_type: ItemType
