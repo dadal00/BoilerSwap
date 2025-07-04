@@ -137,6 +137,7 @@ pub struct ItemPayload {
     pub title: String,
     pub description: String,
     pub location: Location,
+    pub emoji: String,
 }
 
 #[derive(Serialize)]
@@ -147,6 +148,7 @@ pub struct Item {
     pub condition: String,
     pub location: String,
     pub description: String,
+    pub emoji: String,
 }
 
-pub type ItemRow<'a> = (Uuid, i8, &'a str, i8, i8, &'a str);
+pub type ItemRow<'a> = (Uuid, i8, &'a str, i8, i8, &'a str, &'a str);

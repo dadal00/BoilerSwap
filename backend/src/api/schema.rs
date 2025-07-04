@@ -40,6 +40,9 @@ pub mod columns {
         pub const DESCRIPTION: &str = "description";
         pub const DESCRIPTION_TYPE: &str = "text";
 
+        pub const EMOJI: &str = "emoji";
+        pub const EMOJI_TYPE: &str = "text";
+
         pub const PRIMARY_KEY: &str = ITEM_ID;
     }
 }

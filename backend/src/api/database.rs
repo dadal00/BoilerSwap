@@ -88,6 +88,7 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                 {} {},
                 {} {},
                 {} {},
+                {} {},
                 PRIMARY KEY({})
             ) WITH cdc = {{'enabled': true}}",
                 KEYSPACE,
@@ -104,6 +105,8 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                 items::LOCATION_TYPE,
                 items::DESCRIPTION,
                 items::DESCRIPTION_TYPE,
+                items::EMOJI,
+                items::EMOJI_TYPE,
                 items::PRIMARY_KEY,
             ),
             &[],
@@ -162,7 +165,7 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
             .await?,
         insert_item: database_session
             .prepare(format!(
-                "INSERT INTO {}.{} ({}, {}, {}, {}, {}, {}) VALUES (?, ?, ?, ?, ?, ?) USING TTL ?",
+                "INSERT INTO {}.{} ({}, {}, {}, {}, {}, {}, {}) VALUES (?, ?, ?, ?, ?, ?, ?) USING TTL ?",
                 KEYSPACE,
                 tables::ITEMS,
                 items::ITEM_ID,
@@ -170,7 +173,8 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                 items::TITLE,
                 items::CONDITION,
                 items::LOCATION,
-                items::DESCRIPTION
+                items::DESCRIPTION,
+                items::EMOJI,
             ))
             .await?,
         get_items: database_session
@@ -285,6 +289,7 @@ pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), 
                 item.condition as i8,
                 item.location as i8,
                 item.description,
+                item.emoji,
                 get_seconds_until(Weekday::Thu),
             ),
             fallback_page_state,
@@ -298,7 +303,7 @@ pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
     row_vec
         .iter()
         .map(
-            |(id, item_type_i8, title, condition_i8, location_i8, description)| Item {
+            |(id, item_type_i8, title, condition_i8, location_i8, description, emoji)| Item {
                 item_id: *id,
                 item_type: ItemType::try_from(convert_i8_to_u8(item_type_i8))
                     .unwrap_or(ItemType::Other)
@@ -314,6 +319,7 @@ pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
                     .as_ref()
                     .to_string(),
                 description: description.to_string(),
+                emoji: emoji.to_string(),
             },
         )
         .collect()
@@ -400,5 +406,6 @@ pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
             .as_ref()
             .to_string(),
         description: get_cdc_text(&data, items::DESCRIPTION),
+        emoji: get_cdc_text(&data, items::EMOJI),
     }
 }

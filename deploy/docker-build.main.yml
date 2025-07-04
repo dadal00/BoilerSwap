@@ -12,7 +12,6 @@ services:
         - PUBLIC_CODE_LENGTH=${PUBLIC_CODE_LENGTH}
         - PUBLIC_MEILI_KEY=${PUBLIC_MEILI_KEY}
         - PUBLIC_MEILI_URL=${PUBLIC_MEILI_URL}
-        - PRIVATE_BACKEND_URL=${PRIVATE_BACKEND_URL}
         - PUBLIC_TEMP_SESSION_DURATION_SECS=${PUBLIC_TEMP_SESSION_DURATION_SECS}
       context: ../frontend
     image: boiler_svelte:latest

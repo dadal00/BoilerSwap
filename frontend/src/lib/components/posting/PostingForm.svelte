@@ -2,9 +2,10 @@
 	import { goto } from '$app/navigation'
 	import { PUBLIC_BACKEND_URL } from '$env/static/public'
 	import { appState } from '$lib/AppState.svelte'
-	import { type ItemType, type Condition, type Location } from '$lib/models'
+	import { type ItemType, type Condition, type Location, type Emoji } from '$lib/models'
 	import ConditionField from './fields/ConditionField.svelte'
 	import DescriptionField from './fields/DescriptionField.svelte'
+	import EmojiField from './fields/EmojiField.svelte'
 	import ItemTypeField from './fields/ItemTypeField.svelte'
 	import LocationField from './fields/LocationField.svelte'
 	import TitleField from './fields/TitleField.svelte'
@@ -15,6 +16,7 @@
 	let title: string = $state('')
 	let description: string = $state('')
 	let location: Location = $state('CaryQuadEast')
+	let emoji: Emoji = $state('books')
 
 	async function submitItem(event: SubmitEvent) {
 		event.preventDefault()
@@ -28,7 +30,7 @@
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			credentials: 'include',
-			body: JSON.stringify({ itemType, condition, title, description, location })
+			body: JSON.stringify({ itemType, condition, title, description, location, emoji })
 		})
 
 		if (!response.ok) {
@@ -70,6 +72,12 @@
 			<div>
 				<label class="block text-sm font-medium mb-2">
 					<LocationField bind:locationValue={location} />
+				</label>
+			</div>
+
+			<div>
+				<label class="block text-sm font-medium mb-2">
+					<EmojiField bind:emojiValue={emoji} />
 				</label>
 			</div>
 

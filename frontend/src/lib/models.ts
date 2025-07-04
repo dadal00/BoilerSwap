@@ -49,7 +49,9 @@ export const ConditionLabels: Record<Condition, string> = {
 	Fair: 'Fair - Noticeable wear but still usable'
 }
 
-export type Emoji = 'chair' | 'snowflake' | 'books' | 'pan' | 'monitor' | 'decor'
+export const EmojiIterable = ['chair', 'snowflake', 'books', 'pan', 'monitor', 'decor'] as const
+
+export type Emoji = (typeof EmojiIterable)[number]
 
 export const EmojiLabels: Record<Emoji, string> = {
 	chair: '🪑',
@@ -80,12 +82,26 @@ export const LocationLabels: Record<Location, string> = {
 	ThirdStreetSuites: 'Third Street Suites'
 }
 
+export const ProductsTable = 'items'
+
+export const ProductFields = {
+	ITEM_ID: 'item_id',
+	ITEM_TYPE: 'item_type',
+	TITLE: 'title',
+	CONDITION: 'condition',
+	LOCATION: 'location',
+	DESCRIPTION: 'description',
+	EMOJI: 'emoji'
+} as const
+
 export type Product = {
-	item_type: ItemType
-	title: string
-	condition: Condition
-	location: Location
-	description?: string
+	[ProductFields.ITEM_ID]: string
+	[ProductFields.ITEM_TYPE]: ItemType
+	[ProductFields.TITLE]: string
+	[ProductFields.CONDITION]: Condition
+	[ProductFields.LOCATION]: Location
+	[ProductFields.DESCRIPTION]: string
+	[ProductFields.EMOJI]: Emoji
 }
 
 export enum Status {
