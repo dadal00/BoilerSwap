@@ -13,6 +13,7 @@ services:
         - PUBLIC_MEILI_KEY=${PUBLIC_MEILI_KEY}
         - PUBLIC_MEILI_URL=${PUBLIC_MEILI_URL}
         - PUBLIC_TEMP_SESSION_DURATION_SECS=${PUBLIC_TEMP_SESSION_DURATION_SECS}
+        - PUBLIC_PAGE_SIZE=${PUBLIC_PAGE_SIZE}
       context: ../frontend
     image: boiler_svelte:latest
 
