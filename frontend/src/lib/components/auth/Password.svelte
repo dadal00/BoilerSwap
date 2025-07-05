@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { PUBLIC_MAX_CHARS } from '$env/static/public'
 
-	let { passwordValue = $bindable(), displayName } = $props<{
-		passwordValue: string
+	let { password = $bindable(), displayName } = $props<{
+		password: string
 		displayName: string
 	}>()
 </script>
@@ -15,7 +15,7 @@
 			class="w-full px-4 py-2 border rounded-lg"
 			maxlength={Number(PUBLIC_MAX_CHARS)}
 			required
-			bind:value={passwordValue}
+			bind:value={password}
 		/>
 	</label>
 </div>

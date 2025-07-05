@@ -35,11 +35,11 @@
 			Enter your Purdue email address and we'll send you a link to reset your password.
 		</p>
 	{/if}
-	<Email bind:accountValue={account} />
+	<Email bind:account />
 	{#if activeTabValue !== 'Reset'}
-		<Password bind:passwordValue={account.password} displayName={'Password'} />
+		<Password bind:password={account.password} displayName={'Password'} />
 		{#if activeTabValue === 'Signup'}
-			<Password bind:passwordValue={confirmPassword} displayName={'Confirm Password'} />
+			<Password bind:password={confirmPassword} displayName={'Confirm Password'} />
 		{/if}
 	{/if}
 	<button

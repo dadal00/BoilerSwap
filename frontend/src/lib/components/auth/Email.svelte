@@ -2,7 +2,7 @@
 	import { PUBLIC_MAX_CHARS } from '$env/static/public'
 	import type { Account } from '$lib/models'
 
-	let { accountValue = $bindable() } = $props<{ accountValue: Account }>()
+	let { account = $bindable() } = $props<{ account: Account }>()
 </script>
 
 <div>
@@ -13,7 +13,7 @@
 			placeholder="yourname@purdue.edu"
 			class="w-full px-4 py-2 border rounded-lg"
 			maxlength={Number(PUBLIC_MAX_CHARS)}
-			bind:value={accountValue.email}
+			bind:value={account.email}
 		/>
 	</label>
 	<p class="text-xs text-gray-500 mt-1">Must be a valid @purdue.edu email address</p>
