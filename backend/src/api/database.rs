@@ -179,8 +179,18 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
             .await?,
         get_items: database_session
             .prepare(
-                Statement::new(format!("SELECT * FROM {}.{}", KEYSPACE, tables::ITEMS))
-                    .with_page_size(100),
+                Statement::new(format!(
+                    "SELECT {}, {}, {}, {}, {}, {}, {} FROM {}.{}", 
+                    items::ITEM_ID,
+                    items::ITEM_TYPE,
+                    items::TITLE,
+                    items::CONDITION,
+                    items::LOCATION,
+                    items::DESCRIPTION,
+                    items::EMOJI,
+                    KEYSPACE,
+                    tables::ITEMS
+                )).with_page_size(100),
             )
             .await?,
     };

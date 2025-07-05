@@ -86,6 +86,8 @@ pub async fn reindex(
 ) -> Result<(), AppError> {
     let mut paging_state = PagingState::start();
 
+    clear_index(meili_client.clone(), index_name).await?;
+
     loop {
         let (query_result, paging_state_response) = database_session
             .execute_single_page(&database_queries.get_items, &[], paging_state)
@@ -140,6 +142,16 @@ pub async fn delete_item(
     meili_client
         .index(index_name)
         .delete_document(key)
+        .await?
+        .wait_for_completion(&meili_client, None, None)
+        .await?;
+    Ok(())
+}
+
+pub async fn clear_index(meili_client: Arc<Client>, index_name: &str) -> anyhow::Result<()> {
+    meili_client
+        .index(index_name)
+        .delete_all_documents()
         .await?
         .wait_for_completion(&meili_client, None, None)
         .await?;
