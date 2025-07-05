@@ -1,6 +1,30 @@
 <script lang="ts">
-	import Products from '$lib/components/browse/Products.svelte'
-	import { ItemTypeIterable, LocationIterable, LocationLabels } from '$lib/models'
+	import { PUBLIC_MAX_CHARS } from '$env/static/public'
+	import { appState } from '$lib/AppState.svelte'
+	import Items from '$lib/components/browse/Items.svelte'
+	import SearchFilters from '$lib/components/browse/SearchFilters.svelte'
+	import { ItemFields, type Condition, type ItemType, type Location } from '$lib/models'
+	import { onMount } from 'svelte'
+
+	let query: string = $state('')
+	let itemTypeFilter: ItemType | '' = $state('')
+	let locationFilter: Location | '' = $state('')
+	let conditionFilter: Condition | '' = $state('')
+
+	onMount(() => {
+		const fullQuery = appState.getFullQuery()
+		query = fullQuery.query
+		itemTypeFilter = fullQuery[ItemFields.ITEM_TYPE]
+		locationFilter = fullQuery[ItemFields.LOCATION]
+		conditionFilter = fullQuery[ItemFields.CONDITION]
+	})
+
+	$effect(() => {
+		appState.setQuery(query)
+		appState.setItemTypeFilter(itemTypeFilter)
+		appState.setLocationFilter(locationFilter)
+		appState.setConditionFilter(conditionFilter)
+	})
 </script>
 
 <section class="py-16 px-6 text-center bg-white">
@@ -31,27 +55,19 @@
 					type="text"
 					placeholder="Search for items (e.g., desk, microwave, textbooks...)"
 					class="flex-1 px-4 py-2 border rounded-lg"
+					maxlength={Number(PUBLIC_MAX_CHARS)}
+					bind:value={query}
 				/>
-				<button
+				<a
+					href="/browse"
 					class="bg-yellow-400 text-gray-800 hover:bg-yellow-500 px-6 py-2 rounded-lg transition-colors"
 				>
 					🔍 Search
-				</button>
+				</a>
 			</div>
 
 			<div class="flex flex-col md:flex-row gap-4">
-				<select class="px-4 py-2 border rounded-lg">
-					<option value="*">All Categories</option>
-					{#each ItemTypeIterable as category}
-						<option value={category}>{category}</option>
-					{/each}
-				</select>
-				<select class="px-4 py-2 border rounded-lg">
-					<option value="*">All Locations</option>
-					{#each LocationIterable as category}
-						<option value={category}>{LocationLabels[category]}</option>
-					{/each}
-				</select>
+				<SearchFilters bind:itemTypeFilter bind:locationFilter bind:conditionFilter />
 			</div>
 		</div>
 	</div>
@@ -60,7 +76,7 @@
 <section class="py-16 px-6">
 	<div class="container mx-auto">
 		<h2 class="text-2xl font-bold text-center mb-8">Available Items</h2>
-		<Products></Products>
+		<Items />
 
 		<div class="text-center mt-8">
 			<a

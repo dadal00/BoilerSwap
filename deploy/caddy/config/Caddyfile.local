@@ -22,7 +22,7 @@
 	}
 }
 {$CADDY_DOMAIN} {
-	handle /search {
+	handle_path /search/* {
 		authorize with verifySearch
 		reverse_proxy {$MEILI_NAME}:{$MEILI_PORT}
 	}

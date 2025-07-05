@@ -1,5 +1,29 @@
 <script lang="ts">
-	import { ItemTypeIterable, LocationIterable, LocationLabels } from '$lib/models'
+	import { PUBLIC_MAX_CHARS } from '$env/static/public'
+	import { appState } from '$lib/AppState.svelte'
+	import { ItemFields, type Condition, type ItemType, type Location } from '$lib/models'
+	import { onMount } from 'svelte'
+	import SearchFilters from './SearchFilters.svelte'
+
+	let query: string = $state('')
+	let itemTypeFilter: ItemType | '' = $state('')
+	let locationFilter: Location | '' = $state('')
+	let conditionFilter: Condition | '' = $state('')
+
+	onMount(() => {
+		const fullQuery = appState.getFullQuery()
+		query = fullQuery.query
+		itemTypeFilter = fullQuery[ItemFields.ITEM_TYPE]
+		locationFilter = fullQuery[ItemFields.LOCATION]
+		conditionFilter = fullQuery[ItemFields.CONDITION]
+	})
+
+	$effect(() => {
+		appState.setQuery(query)
+		appState.setItemTypeFilter(itemTypeFilter)
+		appState.setLocationFilter(locationFilter)
+		appState.setConditionFilter(conditionFilter)
+	})
 </script>
 
 <div class="bg-white rounded-lg shadow-sm border p-6 mb-8">
@@ -9,23 +33,14 @@
 				type="text"
 				placeholder="Search for items..."
 				class="w-full pl-10 pr-4 py-3 border rounded-lg"
+				maxlength={Number(PUBLIC_MAX_CHARS)}
+				bind:value={query}
 			/>
 			<span class="absolute left-3 top-1/2 transform -translate-y-1/2">🔍</span>
 		</div>
-		<select class="px-4 py-3 border rounded-lg">
-			<option value="*">All Categories</option>
-			{#each ItemTypeIterable as category}
-				<option value={category}>{category}</option>
-			{/each}
-		</select>
-		<select class="px-4 py-3 border rounded-lg">
-			<option value="*">All Locations</option>
-			{#each LocationIterable as category}
-				<option value={category}>{LocationLabels[category]}</option>
-			{/each}
-		</select>
+		<SearchFilters bind:itemTypeFilter bind:locationFilter bind:conditionFilter />
 	</div>
 	<div class="flex items-center justify-between mt-4 pt-4 border-t">
-		<p class="text-gray-600">6 items available</p>
+		<p class="text-gray-600">{appState.getTotalHits()} items available</p>
 	</div>
 </div>

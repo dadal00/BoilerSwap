@@ -82,9 +82,9 @@ export const LocationLabels: Record<Location, string> = {
 	ThirdStreetSuites: 'Third Street Suites'
 }
 
-export const ProductsTable = 'items'
+export const ItemsTableName = 'items'
 
-export const ProductFields = {
+export const ItemFields = {
 	ITEM_ID: 'item_id',
 	ITEM_TYPE: 'item_type',
 	TITLE: 'title',
@@ -94,14 +94,14 @@ export const ProductFields = {
 	EMOJI: 'emoji'
 } as const
 
-export type Product = {
-	[ProductFields.ITEM_ID]: string
-	[ProductFields.ITEM_TYPE]: ItemType
-	[ProductFields.TITLE]: string
-	[ProductFields.CONDITION]: Condition
-	[ProductFields.LOCATION]: Location
-	[ProductFields.DESCRIPTION]: string
-	[ProductFields.EMOJI]: Emoji
+export type Item = {
+	[ItemFields.ITEM_ID]?: string
+	[ItemFields.ITEM_TYPE]: ItemType
+	[ItemFields.TITLE]: string
+	[ItemFields.CONDITION]: Condition
+	[ItemFields.LOCATION]: Location
+	[ItemFields.DESCRIPTION]: string
+	[ItemFields.EMOJI]: Emoji
 }
 
 export enum Status {
@@ -109,4 +109,11 @@ export enum Status {
 	isVerifying,
 	isVerifyingForgot,
 	isVerifyingUpdate
+}
+
+export type FullQuery = {
+	query: string
+	[ItemFields.ITEM_TYPE]: ItemType | ''
+	[ItemFields.LOCATION]: Location | ''
+	[ItemFields.CONDITION]: Condition | ''
 }

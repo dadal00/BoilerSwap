@@ -1,4 +1,13 @@
-import { Status } from './models'
+import {
+	ItemFields,
+	Status,
+	type Condition,
+	type FullQuery,
+	type Item,
+	type ItemType,
+	type Location
+} from './models'
+import { page } from '$app/state'
 
 class AppState {
 	private signedIn: boolean = $state(false)
@@ -7,6 +16,51 @@ class AppState {
 	private toVerifyUpdate: boolean = $state(false)
 
 	private lastAttempt: number = Date.now()
+
+	private query: string = $state('')
+	private totalHits: number = $state(0)
+	private itemTypeFilter: ItemType | '' = $state('')
+	private locationFilter: Location | '' = $state('')
+	private conditionFilter: Condition | '' = $state('')
+	private hits: Item[] = $state([])
+
+	setQuery(query: string): void {
+		this.query = query
+	}
+
+	setItemTypeFilter(filter: ItemType | ''): void {
+		this.itemTypeFilter = filter
+	}
+
+	setLocationFilter(filter: Location | ''): void {
+		this.locationFilter = filter
+	}
+
+	setConditionFilter(filter: Condition | ''): void {
+		this.conditionFilter = filter
+	}
+
+	getFullQuery(): FullQuery {
+		return {
+			query: this.query,
+			[ItemFields.ITEM_TYPE]: this.itemTypeFilter,
+			[ItemFields.LOCATION]: this.locationFilter,
+			[ItemFields.CONDITION]: this.conditionFilter
+		}
+	}
+
+	setQueryResults(items: Item[], totalItems: number): void {
+		this.hits = items
+		this.totalHits = totalItems
+	}
+
+	getTotalHits(): number {
+		return this.totalHits
+	}
+
+	getHits(): Item[] {
+		return page.url.pathname.includes('/browse') ? this.hits : this.hits.slice(0, 3)
+	}
 
 	setLastAttempt(value: number): void {
 		this.lastAttempt = value
