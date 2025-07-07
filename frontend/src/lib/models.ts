@@ -117,3 +117,5 @@ export type FullQuery = {
 	[ItemFields.LOCATION]: Location | ''
 	[ItemFields.CONDITION]: Condition | ''
 }
+
+export type VerifcationType = 'verify' | 'forget'

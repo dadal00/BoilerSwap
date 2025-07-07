@@ -5,7 +5,7 @@ import { appState } from '$lib/AppState.svelte'
 import { fetchBackend } from './utils'
 
 export async function forgot(email: string): Promise<void> {
-	if (appState.isLimited()) {
+	if (appState.getLimited()) {
 		return
 	}
 
@@ -15,7 +15,7 @@ export async function forgot(email: string): Promise<void> {
 	}
 
 	try {
-		appState.setLastAttempt(Date.now())
+		appState.nowLimited()
 
 		await fetchBackend('/forgot', { token: email })
 
@@ -27,7 +27,7 @@ export async function forgot(email: string): Promise<void> {
 }
 
 export async function login(account: Account): Promise<void> {
-	if (appState.isLimited()) {
+	if (appState.getLimited()) {
 		return
 	}
 
@@ -43,7 +43,7 @@ export async function login(account: Account): Promise<void> {
 	}
 
 	try {
-		appState.setLastAttempt(Date.now())
+		appState.nowLimited()
 
 		await fetchBackend('/authenticate', account)
 
@@ -55,7 +55,7 @@ export async function login(account: Account): Promise<void> {
 }
 
 export async function signup(account: Account, confirmPassword: string): Promise<void> {
-	if (appState.isLimited()) {
+	if (appState.getLimited()) {
 		return
 	}
 
@@ -75,7 +75,7 @@ export async function signup(account: Account, confirmPassword: string): Promise
 	}
 
 	try {
-		appState.setLastAttempt(Date.now())
+		appState.nowLimited()
 
 		await fetchBackend('/authenticate', account)
 
@@ -87,7 +87,7 @@ export async function signup(account: Account, confirmPassword: string): Promise
 }
 
 export async function verify(auth_code: string): Promise<void> {
-	if (appState.isLimited()) {
+	if (appState.getLimited()) {
 		return
 	}
 
@@ -101,7 +101,7 @@ export async function verify(auth_code: string): Promise<void> {
 	}
 
 	try {
-		appState.setLastAttempt(Date.now())
+		appState.nowLimited()
 
 		await fetchBackend('/verify', { token: auth_code })
 
@@ -113,7 +113,7 @@ export async function verify(auth_code: string): Promise<void> {
 }
 
 export async function verify_forget(auth_code: string) {
-	if (appState.isLimited()) {
+	if (appState.getLimited()) {
 		return
 	}
 
@@ -127,7 +127,7 @@ export async function verify_forget(auth_code: string) {
 	}
 
 	try {
-		appState.setLastAttempt(Date.now())
+		appState.nowLimited()
 
 		await fetchBackend('/verify', { token: auth_code })
 
@@ -139,7 +139,7 @@ export async function verify_forget(auth_code: string) {
 }
 
 export async function update(new_password: string) {
-	if (appState.isLimited()) {
+	if (appState.getLimited()) {
 		return
 	}
 
@@ -153,7 +153,7 @@ export async function update(new_password: string) {
 	}
 
 	try {
-		appState.setLastAttempt(Date.now())
+		appState.nowLimited()
 
 		await fetchBackend('/verify', { token: new_password })
 
@@ -165,12 +165,12 @@ export async function update(new_password: string) {
 }
 
 export async function signout() {
-	if (appState.isLimited()) {
+	if (appState.getLimited()) {
 		return
 	}
 
 	if (appState.getStatus(Status.isSignedIn)) {
-		appState.setLastAttempt(Date.now())
+		appState.nowLimited()
 
 		const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
 			method: 'DELETE',

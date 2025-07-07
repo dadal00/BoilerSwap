@@ -10,7 +10,13 @@ import {
 } from './models'
 import { appState } from './AppState.svelte'
 
-const client = new Meilisearch({ host: PUBLIC_MEILI_URL, apiKey: PUBLIC_MEILI_KEY })
+const client = new Meilisearch({
+	host: PUBLIC_MEILI_URL,
+	apiKey: PUBLIC_MEILI_KEY,
+	requestInit: {
+		credentials: 'include'
+	}
+})
 
 export async function search(
 	query: string,
@@ -35,5 +41,6 @@ export async function search(
 	const response = await client.index(ItemsTableName).search(query, {
 		filter: filters
 	})
+
 	appState.setQueryResults(response.hits as Item[], response.estimatedTotalHits)
 }

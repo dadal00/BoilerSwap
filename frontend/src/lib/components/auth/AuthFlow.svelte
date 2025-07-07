@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { appState } from '$lib/AppState.svelte'
 	import Email from '$lib/components/auth/Email.svelte'
 	import Password from '$lib/components/auth/Password.svelte'
 	import { login, signup, forgot } from '$lib/helpers/auth'
@@ -43,7 +44,9 @@
 		{/if}
 	{/if}
 	<button
-		class="w-full bg-yellow-400 text-gray-800 hover:bg-yellow-500 py-2 rounded-lg transition-colors"
+		class="w-full {appState.getLimited()
+			? 'bg-gray-300 cursor-not-allowed'
+			: 'bg-yellow-400 hover:bg-yellow-500'} text-gray-800 py-2 rounded-lg transition-colors"
 		onclick={authFunction}
 	>
 		{activeTabValue}

@@ -15,7 +15,8 @@ class AppState {
 	private toVerifyForgot: boolean = $state(false)
 	private toVerifyUpdate: boolean = $state(false)
 
-	private lastAttempt: number = Date.now()
+	private limited: boolean = $state(false)
+	private productLimited: boolean = $state(false)
 
 	private query: string = $state('')
 	private totalHits: number = $state(0)
@@ -23,6 +24,27 @@ class AppState {
 	private locationFilter: Location | '' = $state('')
 	private conditionFilter: Condition | '' = $state('')
 	private hits: Item[] = $state([])
+
+	getLimited(): boolean {
+		return this.limited
+	}
+
+	getProductLimited(): boolean {
+		return this.productLimited
+	}
+
+	nowLimited(): void {
+		this.limited = true
+		setTimeout(() => {
+			this.limited = false
+		}, 500)
+	}
+	nowProductLimited(): void {
+		this.productLimited = true
+		setTimeout(() => {
+			this.productLimited = false
+		}, 1000)
+	}
 
 	setQuery(query: string): void {
 		this.query = query
@@ -62,10 +84,6 @@ class AppState {
 		return page.url.pathname.includes('/browse') ? this.hits : this.hits.slice(0, 3)
 	}
 
-	setLastAttempt(value: number): void {
-		this.lastAttempt = value
-	}
-
 	getStatus(status: Status): boolean {
 		switch (status) {
 			case Status.isSignedIn:
@@ -98,13 +116,6 @@ class AppState {
 			default:
 				throw new Error('Invalid flag')
 		}
-	}
-
-	isLimited(): boolean {
-		return Date.now() < this.lastAttempt + 500
-	}
-	isProductLimited(): boolean {
-		return Date.now() < this.lastAttempt + 5000
 	}
 }
 

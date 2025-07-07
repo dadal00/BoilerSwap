@@ -23,11 +23,11 @@
 	async function submitItem(event: SubmitEvent) {
 		event.preventDefault()
 
-		if (appState.isProductLimited()) {
+		if (appState.getProductLimited()) {
 			return
 		}
 
-		appState.setLastAttempt(Date.now())
+		appState.nowProductLimited()
 		const response = await fetch(PUBLIC_BACKEND_URL + '/post-item', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
