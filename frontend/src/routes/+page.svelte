@@ -1,30 +1,23 @@
 <script lang="ts">
+	import { goto } from '$app/navigation'
 	import { PUBLIC_MAX_CHARS } from '$env/static/public'
 	import { appState } from '$lib/AppState.svelte'
 	import Items from '$lib/components/browse/Items.svelte'
 	import SearchFilters from '$lib/components/browse/SearchFilters.svelte'
-	import { ItemFields, type Condition, type ItemType, type Location } from '$lib/models'
-	import { onMount } from 'svelte'
+	import { type Condition, type ItemType, type Location } from '$lib/models'
 
 	let query: string = $state('')
 	let itemTypeFilter: ItemType | '' = $state('')
 	let locationFilter: Location | '' = $state('')
 	let conditionFilter: Condition | '' = $state('')
 
-	onMount(() => {
-		const fullQuery = appState.getFullQuery()
-		query = fullQuery.query
-		itemTypeFilter = fullQuery[ItemFields.ITEM_TYPE]
-		locationFilter = fullQuery[ItemFields.LOCATION]
-		conditionFilter = fullQuery[ItemFields.CONDITION]
-	})
-
-	$effect(() => {
+	function transitionSearch(_: MouseEvent) {
 		appState.setQuery(query)
 		appState.setItemTypeFilter(itemTypeFilter)
 		appState.setLocationFilter(locationFilter)
 		appState.setConditionFilter(conditionFilter)
-	})
+		goto('/browse')
+	}
 </script>
 
 <section class="py-16 px-6 text-center bg-white">
@@ -58,12 +51,12 @@
 					maxlength={Number(PUBLIC_MAX_CHARS)}
 					bind:value={query}
 				/>
-				<a
-					href="/browse"
+				<button
+					onclick={transitionSearch}
 					class="bg-yellow-400 text-gray-800 hover:bg-yellow-500 px-6 py-2 rounded-lg transition-colors"
 				>
 					🔍 Search
-				</a>
+				</button>
 			</div>
 
 			<div class="flex flex-col md:flex-row gap-4">

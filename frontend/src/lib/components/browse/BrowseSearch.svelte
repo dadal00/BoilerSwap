@@ -2,7 +2,7 @@
 	import { PUBLIC_MAX_CHARS } from '$env/static/public'
 	import { appState } from '$lib/AppState.svelte'
 	import { ItemFields, type Condition, type ItemType, type Location } from '$lib/models'
-	import { onMount } from 'svelte'
+	import { onDestroy, onMount } from 'svelte'
 	import SearchFilters from './SearchFilters.svelte'
 
 	let query: string = $state('')
@@ -23,6 +23,13 @@
 		appState.setItemTypeFilter(itemTypeFilter)
 		appState.setLocationFilter(locationFilter)
 		appState.setConditionFilter(conditionFilter)
+	})
+
+	onDestroy(() => {
+		appState.setQuery('')
+		appState.setItemTypeFilter('')
+		appState.setLocationFilter('')
+		appState.setConditionFilter('')
 	})
 </script>
 

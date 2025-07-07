@@ -3,15 +3,30 @@
 	import ItemCard from '$lib/components/ItemCard.svelte'
 	import { search } from '$lib/meiliClient'
 	import { ItemFields } from '$lib/models'
+	import { page } from '$app/state'
+
+	let searchTimer: number | undefined = undefined
 
 	$effect(() => {
+		if (!page.url.pathname.includes('/browse')) {
+			search('', '', '', '')
+			return
+		}
+
 		const fullQuery = appState.getFullQuery()
-		search(
-			fullQuery.query,
-			fullQuery[ItemFields.ITEM_TYPE],
-			fullQuery[ItemFields.LOCATION],
-			fullQuery[ItemFields.CONDITION]
-		)
+
+		if (searchTimer) {
+			clearTimeout(searchTimer)
+		}
+
+		searchTimer = setTimeout(() => {
+			search(
+				fullQuery.query,
+				fullQuery[ItemFields.ITEM_TYPE],
+				fullQuery[ItemFields.LOCATION],
+				fullQuery[ItemFields.CONDITION]
+			)
+		}, 200)
 	})
 </script>
 
