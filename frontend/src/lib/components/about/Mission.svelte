@@ -8,8 +8,8 @@
 		</h2>
 		<p class="text-lg text-gray-700 text-center leading-relaxed">
 			BoilerSwap exists to reduce waste, save money, and build community among Purdue students. We
-			believe that one person's unwanted item can be another's treasure, and by facilitating these
-			exchanges, we're making our campus more sustainable and our community stronger.
+			believe that one person's unwanted item can be another's treasure, and with this platform,
+			we're making our campus more sustainable and our community stronger.
 		</p>
 	</div>
 </section>

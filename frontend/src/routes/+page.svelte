@@ -27,21 +27,6 @@
 			The sustainable way for Purdue students to share, reuse, and reduce waste
 		</p>
 
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-			<div class="text-center fade-in">
-				<div class="text-3xl font-bold text-yellow-500 mb-2">1,247</div>
-				<div class="text-gray-600">Items Saved from Trash</div>
-			</div>
-			<div class="text-center fade-in">
-				<div class="text-3xl font-bold text-yellow-500 mb-2">892</div>
-				<div class="text-gray-600">Active Students</div>
-			</div>
-			<div class="text-center fade-in">
-				<div class="text-3xl font-bold text-yellow-500 mb-2">$15,430</div>
-				<div class="text-gray-600">Money Saved</div>
-			</div>
-		</div>
-
 		<div class="bg-gray-50 p-6 rounded-lg shadow-sm">
 			<div class="flex flex-col md:flex-row gap-4 mb-4">
 				<input
