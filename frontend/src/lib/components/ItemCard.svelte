@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getDaysUntil } from '$lib/helpers/utils'
+	import { getDaysUntil, sanitizeHtml } from '$lib/helpers/utils'
 	import {
 		ConditionEmojis,
 		EmojiLabels,
@@ -26,13 +26,15 @@
 	</div>
 	<div class="p-6">
 		<div class="flex justify-between items-start mb-2">
-			<h3 class="font-semibold text-lg">{item[ItemFields.TITLE]}</h3>
+			<h3 class="font-semibold text-lg">
+				{@html sanitizeHtml(item[ItemFields.FORMATTED][ItemFields.TITLE])}
+			</h3>
 			<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm"
 				>{item[ItemFields.ITEM_TYPE]}</span
 			>
 		</div>
 		<p class="text-gray-600 text-sm mb-4">
-			{item.description}
+			{@html sanitizeHtml(item[ItemFields.FORMATTED][ItemFields.DESCRIPTION])}
 		</p>
 		<div class="flex gap-x-3 items-start mb-2">
 			<div class="flex items-center text-sm text-gray-500 mb-2">

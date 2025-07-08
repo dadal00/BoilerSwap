@@ -42,7 +42,10 @@ export async function search(
 	const response = await client.index(ItemsTableName).search(query, {
 		filter: filters,
 		limit: Number(PUBLIC_PAGE_SIZE),
-		offset: offset
+		offset: offset,
+		attributesToHighlight: [ItemFields.TITLE, ItemFields.DESCRIPTION],
+		highlightPreTag: '<mark>',
+		highlightPostTag: '</mark>'
 	})
 
 	appState.setQueryResults(response.hits as Item[], response.estimatedTotalHits)

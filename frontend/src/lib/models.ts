@@ -1,3 +1,5 @@
+import type { Dictionary } from 'meilisearch'
+
 export type TokenPayload = {
 	token: string
 }
@@ -92,7 +94,8 @@ export const ItemFields = {
 	LOCATION: 'location',
 	DESCRIPTION: 'description',
 	EMOJI: 'emoji',
-	EXPIRATION_DATE: 'expiration_date'
+	EXPIRATION_DATE: 'expiration_date',
+	FORMATTED: '_formatted'
 } as const
 
 export type Item = {
@@ -104,6 +107,7 @@ export type Item = {
 	[ItemFields.DESCRIPTION]: string
 	[ItemFields.EMOJI]: Emoji
 	[ItemFields.EXPIRATION_DATE]?: string
+	[ItemFields.FORMATTED]?: Dictionary
 }
 
 export enum Status {

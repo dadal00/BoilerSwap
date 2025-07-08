@@ -1,6 +1,7 @@
 import { PUBLIC_BACKEND_URL } from '$env/static/public'
 import { appState } from '$lib/AppState.svelte'
 import type { Account, ExpirationColor, TokenPayload } from '../models'
+import DOMPurify from 'dompurify'
 
 export async function fetchBackend(path: string, payload: Account | TokenPayload) {
 	const response = await fetch(PUBLIC_BACKEND_URL + path, {
@@ -32,4 +33,11 @@ export function getDaysUntil(dateString: string): [string, ExpirationColor] {
 		return ['Expires tommorow!', 'yellow']
 	}
 	return ['Expires in ' + diff + ' days.', 'green']
+}
+
+export function sanitizeHtml(input: string): string {
+	return DOMPurify.sanitize(input, {
+		ALLOWED_TAGS: ['mark'],
+		ALLOWED_ATTR: []
+	})
 }
