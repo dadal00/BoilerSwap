@@ -14,6 +14,8 @@ export async function fetchBackend(path: string, payload: Account | TokenPayload
 	})
 
 	if (!response.ok) {
+		appState.setAuthError((await response.text()).slice(0, 50))
+
 		throw new Error(`HTTP error! status: ${response.status}`)
 	}
 }

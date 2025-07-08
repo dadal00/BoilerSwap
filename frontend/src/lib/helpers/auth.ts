@@ -1,5 +1,9 @@
 import { goto } from '$app/navigation'
-import { PUBLIC_BACKEND_URL } from '$env/static/public'
+import {
+	PUBLIC_BACKEND_URL,
+	PUBLIC_CODE_LENGTH,
+	PUBLIC_MIN_PASSWORD_LENGTH
+} from '$env/static/public'
 import { Status, type Account } from '$lib/models'
 import { appState } from '$lib/AppState.svelte'
 import { fetchBackend } from './utils'
@@ -10,7 +14,7 @@ export async function forgot(email: string): Promise<void> {
 	}
 
 	if (!/.+@purdue\.edu$/.test(email)) {
-		console.log('Recovery failed: email must be a Purdue address')
+		appState.setAuthError('Email must be a Purdue address')
 		return
 	}
 
@@ -21,9 +25,7 @@ export async function forgot(email: string): Promise<void> {
 
 		appState.setStatus(Status.isVerifyingForgot, true)
 		goto('/auth/verify/forget')
-	} catch (err) {
-		console.log('Login failed: ', err)
-	}
+	} catch (err) {}
 }
 
 export async function login(account: Account): Promise<void> {
@@ -34,11 +36,11 @@ export async function login(account: Account): Promise<void> {
 	account.action = 'login'
 
 	if (!/.+@purdue\.edu$/.test(account.email)) {
-		console.log('Signup failed: email must be a Purdue address')
+		appState.setAuthError('Email must be a Purdue address')
 		return
 	}
-	if (account.password === '') {
-		console.log('Signup failed: invalid password')
+	if (account.password === '' || account.password.length < Number(PUBLIC_MIN_PASSWORD_LENGTH)) {
+		appState.setAuthError('Password must be 10+ characters')
 		return
 	}
 
@@ -49,9 +51,7 @@ export async function login(account: Account): Promise<void> {
 
 		appState.setStatus(Status.isVerifying, true)
 		goto('/auth/verify')
-	} catch (err) {
-		console.log('Login failed: ', err)
-	}
+	} catch (err) {}
 }
 
 export async function signup(account: Account, confirmPassword: string): Promise<void> {
@@ -62,15 +62,15 @@ export async function signup(account: Account, confirmPassword: string): Promise
 	account.action = 'signup'
 
 	if (!/.+@purdue\.edu$/.test(account.email)) {
-		console.log('Signup failed: email must be a Purdue address')
+		appState.setAuthError('Email must be a Purdue address')
 		return
 	}
-	if (account.password === '') {
-		console.log('Signup failed: invalid password')
+	if (account.password === '' || account.password.length < Number(PUBLIC_MIN_PASSWORD_LENGTH)) {
+		appState.setAuthError('Password must be 10+ characters')
 		return
 	}
 	if (account.password !== confirmPassword) {
-		console.log('Signup failed: passwords do not match')
+		appState.setAuthError('Passwords do not match')
 		return
 	}
 
@@ -81,9 +81,7 @@ export async function signup(account: Account, confirmPassword: string): Promise
 
 		appState.setStatus(Status.isVerifying, true)
 		goto('/auth/verify')
-	} catch (err) {
-		console.log('Signup failed: ', err)
-	}
+	} catch (err) {}
 }
 
 export async function verify(auth_code: string): Promise<void> {
@@ -96,7 +94,7 @@ export async function verify(auth_code: string): Promise<void> {
 	}
 
 	if (!/^\d+$/.test(auth_code) || auth_code.length != 6) {
-		console.log('Verification failed: only 6 numbers')
+		appState.setAuthError('Only ' + PUBLIC_CODE_LENGTH + ' numbers')
 		return
 	}
 
@@ -107,9 +105,7 @@ export async function verify(auth_code: string): Promise<void> {
 
 		appState.setStatus(Status.isSignedIn, true)
 		goto('/browse')
-	} catch (err) {
-		console.log('verification failed: ', err)
-	}
+	} catch (err) {}
 }
 
 export async function verify_forget(auth_code: string) {
@@ -122,7 +118,7 @@ export async function verify_forget(auth_code: string) {
 	}
 
 	if (!/^\d+$/.test(auth_code) || auth_code.length != 6) {
-		console.log('Verification failed: only 6 numbers')
+		appState.setAuthError('Only ' + PUBLIC_CODE_LENGTH + ' numbers')
 		return
 	}
 
@@ -133,9 +129,7 @@ export async function verify_forget(auth_code: string) {
 
 		appState.setStatus(Status.isVerifyingUpdate, true)
 		goto('/auth/verify/update')
-	} catch (err) {
-		console.log('verification failed: ', err)
-	}
+	} catch (err) {}
 }
 
 export async function update(new_password: string) {
@@ -147,8 +141,12 @@ export async function update(new_password: string) {
 		return
 	}
 
-	if (new_password === '' || new_password.length > 100) {
-		console.log('Invalid password')
+	if (
+		new_password === '' ||
+		new_password.length > 100 ||
+		new_password.length < Number(PUBLIC_MIN_PASSWORD_LENGTH)
+	) {
+		appState.setAuthError('Password must be 10+ characters')
 		return
 	}
 
@@ -159,9 +157,7 @@ export async function update(new_password: string) {
 
 		appState.setStatus(Status.isSignedIn, true)
 		goto('/browse')
-	} catch (err) {
-		console.log('verification failed: ', err)
-	}
+	} catch (err) {}
 }
 
 export async function signout() {
@@ -169,18 +165,41 @@ export async function signout() {
 		return
 	}
 
-	if (appState.getStatus(Status.isSignedIn)) {
-		appState.nowLimited()
+	if (!appState.getStatus(Status.isSignedIn)) {
+		return
+	}
 
-		const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
-			method: 'DELETE',
-			credentials: 'include'
-		})
+	appState.nowLimited()
 
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`)
-		}
+	const response = await fetch(PUBLIC_BACKEND_URL + '/delete', {
+		method: 'DELETE',
+		credentials: 'include'
+	})
 
-		appState.setStatus(Status.isSignedIn, false)
+	if (!response.ok) {
+		throw new Error(`HTTP error! status: ${response.status}`)
+	}
+
+	appState.setStatus(Status.isSignedIn, false)
+}
+
+export async function resend(resendSeconds: number) {
+	if (resendSeconds != 0) {
+		return
+	}
+	if (appState.getLimited()) {
+		return
+	}
+
+	appState.nowLimited()
+
+	const response = await fetch(PUBLIC_BACKEND_URL + '/resend', {
+		method: 'POST',
+		credentials: 'include'
+	})
+
+	if (!response.ok) {
+		appState.setAuthError((await response.text()).slice(0, 50))
+		throw new Error(`HTTP error! status: ${response.status}`)
 	}
 }

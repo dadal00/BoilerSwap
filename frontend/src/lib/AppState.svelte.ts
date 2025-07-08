@@ -16,6 +16,8 @@ class AppState {
 	private toVerifyForgot: boolean = $state(false)
 	private toVerifyUpdate: boolean = $state(false)
 
+	private authError: string = $state('')
+
 	private limited: boolean = $state(false)
 	private productLimited: boolean = $state(false)
 
@@ -26,8 +28,15 @@ class AppState {
 	private conditionFilter: Condition | '' = $state('')
 	private hits: Item[] = $state([])
 	private offset: number = $state(0)
-
 	private todaysDate: Date = new Date()
+
+	getAuthError(): string {
+		return this.authError
+	}
+
+	setAuthError(err: string): void {
+		this.authError = err
+	}
 
 	getDate(): Date {
 		return this.todaysDate

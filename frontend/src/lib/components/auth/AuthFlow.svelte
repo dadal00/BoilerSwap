@@ -4,6 +4,7 @@
 	import Password from '$lib/components/auth/Password.svelte'
 	import { login, signup, forgot } from '$lib/helpers/auth'
 	import type { Account, TabOptions } from '$lib/models'
+	import { onDestroy, onMount } from 'svelte'
 
 	let { activeTabValue = $bindable(), showTab } = $props<{
 		activeTabValue: string
@@ -12,8 +13,10 @@
 
 	let account: Account = $state({ email: '', password: '', action: 'signup' })
 	let confirmPassword: string = $state('')
+	let error: string = $derived(appState.getAuthError())
 
 	function authFunction(_: MouseEvent) {
+		appState.setAuthError('')
 		switch (activeTabValue) {
 			case 'Reset':
 				forgot(account.email)
@@ -28,9 +31,20 @@
 				console.log('Unknown tab')
 		}
 	}
+
+	onMount(() => {
+		appState.setAuthError('')
+	})
+
+	onDestroy(() => {
+		appState.setAuthError('')
+	})
 </script>
 
 <div class="space-y-4">
+	{#if error != ''}
+		<p class="text-red-600 text-sm font-medium text-center">{error}</p>
+	{/if}
 	{#if activeTabValue === 'Reset'}
 		<p class="text-gray-600 text-sm">
 			Enter your Purdue email address and we'll send you a link to reset your password.
