@@ -24,12 +24,6 @@ use axum::{
 };
 use redis::AsyncTypedCommands;
 use std::{net::SocketAddr, sync::Arc};
-use tracing::info;
-
-pub async fn default_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    info!("Received!");
-    "Hello from Axum!"
-}
 
 pub async fn api_token_check(
     headers: HeaderMap,
@@ -50,7 +44,6 @@ pub async fn api_token_check(
     if validate_api_token(headers) {
         return Ok(next.run(request).await);
     }
-
     Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response())
 }
 
@@ -68,10 +61,16 @@ pub async fn forgot_handler(
 
     let forgot_key = get_key(RedisAction::LockedForgot, &hashed_ip);
     let failed_verify_key = get_key(RedisAction::LockedVerify, &hashed_ip);
+    let code_key = get_key(RedisAction::LockedCode, &hashed_ip);
 
     if let Some(attempts) = try_get(state.clone(), &failed_verify_key, &payload.token).await? {
         if attempts.parse::<u8>()? >= state.config.verify_max_attempts {
-            return Ok((StatusCode::UNAUTHORIZED, "Rate Limited").into_response());
+            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
+        }
+    }
+    if let Some(attempts) = try_get(state.clone(), &code_key, &payload.token).await? {
+        if attempts.parse::<u8>()? >= state.config.max_codes {
+            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
         }
     }
 
@@ -91,6 +90,7 @@ pub async fn forgot_handler(
             &redis_account,
             RedisAction::Forgot,
             &Some(forgot_key),
+            &Some(code_key),
         )
         .await?,
     )
@@ -151,6 +151,7 @@ pub async fn verify_handler(
     let forgot_key = get_key(RedisAction::LockedForgot, &hashed_ip);
     let failed_verify_key = get_key(RedisAction::LockedVerify, &hashed_ip);
     let failed_auth_key = get_key(RedisAction::LockedAuth, &hashed_ip);
+    let code_key = get_key(RedisAction::LockedCode, &hashed_ip);
 
     let redis_account = match get_redis_account(
         state.clone(),
@@ -167,6 +168,7 @@ pub async fn verify_handler(
             remove_id(state.clone(), &failed_verify_key, &account.email).await?;
             remove_id(state.clone(), &failed_auth_key, &account.email).await?;
             remove_id(state.clone(), &forgot_key, &account.email).await?;
+            remove_id(state.clone(), &code_key, &account.email).await?;
             account
         }
         None => {
@@ -184,6 +186,7 @@ pub async fn verify_handler(
                 &result,
                 &redis_account,
                 RedisAction::Update,
+                &None,
                 &None,
             )
             .await?,
@@ -217,10 +220,17 @@ pub async fn authenticate_handler(
     let hashed_ip = get_hashed_ip(&headers, address.ip());
 
     let failed_auth_key = get_key(RedisAction::LockedAuth, &hashed_ip);
+    let code_key = get_key(RedisAction::LockedCode, &hashed_ip);
 
     if let Some(attempts) = try_get(state.clone(), &failed_auth_key, &payload.email).await? {
         if attempts.parse::<u8>()? >= state.config.auth_max_attempts {
-            return Ok((StatusCode::UNAUTHORIZED, "Rate Limited").into_response());
+            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
+        }
+    }
+
+    if let Some(attempts) = try_get(state.clone(), &code_key, &payload.email).await? {
+        if attempts.parse::<u8>()? >= state.config.max_codes {
+            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
         }
     }
 
@@ -266,6 +276,7 @@ pub async fn authenticate_handler(
             &redis_account,
             RedisAction::Auth,
             &None,
+            &Some(code_key),
         )
         .await?,
     )
@@ -295,4 +306,54 @@ pub async fn post_item_handler(
     insert_item(state.clone(), payload).await?;
 
     Ok((StatusCode::OK).into_response())
+}
+
+pub async fn resend_handler(
+    headers: HeaderMap,
+    ConnectInfo(address): ConnectInfo<SocketAddr>,
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, AppError> {
+    let (result, redis_action, id) = match verify_token(state.clone(), headers.clone()).await? {
+        Some((a, pending_redis_action, c)) => {
+            if pending_redis_action != RedisAction::Auth
+                && pending_redis_action != RedisAction::Forgot
+            {
+                return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+            }
+            (a, pending_redis_action, c)
+        }
+        None => {
+            return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+        }
+    };
+    if result.is_none() {
+        return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
+    }
+    remove_id(state.clone(), redis_action.as_ref(), &id).await?;
+
+    let redis_account: RedisAccount = serde_json::from_str(&result.expect("is_none failed"))?;
+
+    let hashed_ip = get_hashed_ip(&headers, address.ip());
+
+    let code_key = get_key(RedisAction::LockedCode, &hashed_ip);
+
+    if let Some(attempts) = try_get(state.clone(), &code_key, &redis_account.email).await? {
+        if attempts.parse::<u8>()? >= state.config.max_codes {
+            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
+        }
+    }
+
+    Ok((
+        StatusCode::OK,
+        create_temporary_session(
+            state.clone(),
+            &None,
+            &redis_account,
+            redis_action,
+            &None,
+            &Some(code_key),
+        )
+        .await?,
+    )
+        .into_response())
 }

@@ -2,8 +2,8 @@ use crate::{
     api::{
         database::start_cdc,
         handlers::{
-            api_token_check, authenticate_handler, default_handler, delete_handler, forgot_handler,
-            post_item_handler, verify_handler,
+            api_token_check, authenticate_handler, delete_handler, forgot_handler,
+            post_item_handler, resend_handler, verify_handler,
         },
         schema::{KEYSPACE, columns::items, tables},
     },
@@ -62,7 +62,7 @@ async fn main() -> Result<(), AppError> {
         .route("/api/delete", delete(delete_handler))
         .route("/api/forgot", post(forgot_handler))
         .route("/api/post-item", post(post_item_handler))
-        .route("/api/get-items", get(default_handler))
+        .route("/api/resend", post(resend_handler))
         .route("/metrics", get(metrics_handler))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),

@@ -1,7 +1,7 @@
 use super::{
     database::insert_user,
     models::{Action, RedisAccount, RedisAction},
-    redis::{insert_id, insert_session},
+    redis::{incr_failed_attempts, insert_id, insert_session},
     twofactor::spawn_code_task,
 };
 use crate::{AppError, AppState};
@@ -76,6 +76,7 @@ pub async fn create_temporary_session(
     redis_account: &RedisAccount,
     redis_action: RedisAction,
     forgot_key: &Option<String>,
+    code_key: &Option<String>,
 ) -> Result<HeaderMap, AppError> {
     if redis_action != RedisAction::Update {
         spawn_code_task(
@@ -84,6 +85,14 @@ pub async fn create_temporary_session(
             redis_account.code.clone(),
             forgot_key.clone(),
         );
+        incr_failed_attempts(
+            state.clone(),
+            code_key.as_ref().unwrap(),
+            &redis_account.email.clone(),
+            &state.config.max_codes_duration_seconds,
+            &state.config.max_codes,
+        )
+        .await?
     }
 
     let serialized = match result {

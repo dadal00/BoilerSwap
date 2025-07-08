@@ -66,6 +66,9 @@ pub enum RedisAction {
 
     #[strum(serialize = "forgot_lock")]
     LockedForgot,
+
+    #[strum(serialize = "code_lock")]
+    LockedCode,
 }
 
 #[derive(Deserialize)]
@@ -161,7 +164,6 @@ pub struct ItemPayload {
     pub description: String,
     pub location: Location,
     pub emoji: Emoji,
-    pub expiration_date: NaiveDate,
 }
 
 #[derive(Serialize)]

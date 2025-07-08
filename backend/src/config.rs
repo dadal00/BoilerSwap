@@ -16,6 +16,8 @@ pub struct Config {
     pub verify_lock_duration_seconds: u16,
     pub temporary_session_duration_seconds: u16,
     pub session_duration_seconds: u16,
+    pub max_codes: u8,
+    pub max_codes_duration_seconds: u16,
 }
 
 impl Config {
@@ -92,6 +94,22 @@ impl Config {
             .parse()
             .map_err(|_| AppError::Config("Invalid RUST_SESSION_DURATION_SECS value".into()))?;
 
+        let max_codes = var("RUST_MAX_CODES")
+            .inspect_err(|_| {
+                info!("RUST_MAX_CODES not set, using default");
+            })
+            .unwrap_or_else(|_| "5".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_MAX_CODES value".into()))?;
+
+        let max_codes_duration_seconds = var("RUST_MAX_CODES_DURATION_SECS")
+            .inspect_err(|_| {
+                info!("RUST_MAX_CODES_DURATION_SECS not set, using default");
+            })
+            .unwrap_or_else(|_| "1800".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_MAX_CODES_DURATION_SECS value".into()))?;
+
         let from_email = read_secret("RUST_FROM_EMAIL")
             .inspect_err(|_| {
                 info!("RUST_FROM_EMAIL not set, using default");
@@ -123,6 +141,8 @@ impl Config {
             verify_lock_duration_seconds,
             temporary_session_duration_seconds,
             session_duration_seconds,
+            max_codes,
+            max_codes_duration_seconds,
         })
     }
 }
