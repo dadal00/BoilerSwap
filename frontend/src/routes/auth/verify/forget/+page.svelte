@@ -7,7 +7,7 @@
 	import VerifyCode from '$lib/components/auth/verify/VerifyCode.svelte'
 
 	let auth_code: string = $state('')
-	let timer: number | null = null
+	let timer: number | null = $state(null)
 
 	onMount(() => {
 		if (!appState.getStatus(Status.isVerifyingForgot)) {
@@ -34,4 +34,4 @@
 	})
 </script>
 
-<VerifyCode bind:auth_code verification_type="forget" />
+<VerifyCode bind:auth_code verification_type="forget" bind:timer />
