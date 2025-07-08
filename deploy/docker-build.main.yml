@@ -14,6 +14,7 @@ services:
         - PUBLIC_MEILI_URL=${PUBLIC_MEILI_URL}
         - PUBLIC_TEMP_SESSION_DURATION_SECS=${PUBLIC_TEMP_SESSION_DURATION_SECS}
         - PUBLIC_PAGE_SIZE=${PUBLIC_PAGE_SIZE}
+        - PUBLIC_MIN_PASSWORD_LENGTH=${PUBLIC_MIN_PASSWORD_LENGTH}
       context: ../frontend
     image: boiler_svelte:latest
 

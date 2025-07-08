@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation'
-	import { PUBLIC_TEMP_SESSION_DURATION_SECS, PUBLIC_MAX_CHARS } from '$env/static/public'
+	import {
+		PUBLIC_TEMP_SESSION_DURATION_SECS,
+		PUBLIC_MAX_CHARS,
+		PUBLIC_MIN_PASSWORD_LENGTH
+	} from '$env/static/public'
 	import { appState } from '$lib/AppState.svelte'
 	import { Status } from '$lib/models'
 	import { onDestroy, onMount } from 'svelte'
@@ -47,9 +51,11 @@
 						placeholder="abcdefghijklmnop"
 						class="w-full px-4 py-2 border rounded-lg"
 						maxlength={Number(PUBLIC_MAX_CHARS)}
+						minlength={Number(PUBLIC_MIN_PASSWORD_LENGTH)}
 						required
 					/>
 				</label>
+				<p class="text-xs text-gray-500 mt-1">Must be {PUBLIC_MIN_PASSWORD_LENGTH}+ characters</p>
 			</div>
 			<button
 				type="submit"

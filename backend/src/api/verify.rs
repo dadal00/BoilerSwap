@@ -43,6 +43,12 @@ pub static CODE_LENGTH: Lazy<usize> = Lazy::new(|| {
         .and_then(|val| val.parse::<usize>().ok())
         .unwrap_or(6)
 });
+pub static MIN_PASSWORD_LENGTH: Lazy<usize> = Lazy::new(|| {
+    env::var("PUBLIC_MIN_PASSWORD_LENGTH")
+        .ok()
+        .and_then(|val| val.parse::<usize>().ok())
+        .unwrap_or(10)
+});
 
 pub async fn verify_token(
     state: Arc<AppState>,
@@ -133,7 +139,7 @@ pub fn validate_length(payload: &str) -> bool {
 }
 
 pub fn validate_password(password: &str) -> Result<(), &'static str> {
-    if !validate_length(password) {
+    if !validate_length(password) && password.len() >= *MIN_PASSWORD_LENGTH {
         return Err("Too many chars");
     }
 
