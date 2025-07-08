@@ -41,7 +41,10 @@ pub mod columns {
         pub const DESCRIPTION_TYPE: &str = "text";
 
         pub const EMOJI: &str = "emoji";
-        pub const EMOJI_TYPE: &str = "text";
+        pub const EMOJI_TYPE: &str = "tinyint";
+
+        pub const EXPIRATION_DATE: &str = "expiration_date";
+        pub const EXPIRATION_DATE_TYPE: &str = "date";
 
         pub const PRIMARY_KEY: &str = ITEM_ID;
     }

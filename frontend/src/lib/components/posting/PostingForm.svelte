@@ -17,7 +17,7 @@
 		title: '',
 		description: '',
 		location: 'CaryQuadEast',
-		emoji: 'books'
+		emoji: 'Books'
 	})
 
 	async function submitItem(event: SubmitEvent) {

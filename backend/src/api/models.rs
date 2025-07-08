@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, EnumString};
@@ -130,6 +131,28 @@ pub enum Location {
     ThirdStreetSuites = 5,
 }
 
+#[derive(TryFromPrimitive, Serialize, Deserialize, EnumString, AsRefStr)]
+#[repr(u8)]
+pub enum Emoji {
+    #[strum(serialize = "Chair")]
+    Chair = 0,
+
+    #[strum(serialize = "Snowflake")]
+    Snowflake = 1,
+
+    #[strum(serialize = "Books")]
+    Books = 2,
+
+    #[strum(serialize = "Pan")]
+    Pan = 3,
+
+    #[strum(serialize = "Monitor")]
+    Monitor = 4,
+
+    #[strum(serialize = "Decor")]
+    Decor = 5,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ItemPayload {
     pub item_type: ItemType,
@@ -137,7 +160,8 @@ pub struct ItemPayload {
     pub title: String,
     pub description: String,
     pub location: Location,
-    pub emoji: String,
+    pub emoji: Emoji,
+    pub expiration_date: NaiveDate,
 }
 
 #[derive(Serialize)]
@@ -149,6 +173,7 @@ pub struct Item {
     pub location: String,
     pub description: String,
     pub emoji: String,
+    pub expiration_date: String,
 }
 
-pub type ItemRow<'a> = (Uuid, i8, &'a str, i8, i8, &'a str, &'a str);
+pub type ItemRow<'a> = (Uuid, i8, &'a str, i8, i8, &'a str, i8, NaiveDate);

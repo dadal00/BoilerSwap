@@ -1,6 +1,6 @@
 use super::{
     consumer::MeiliConsumerFactory,
-    models::{Condition, Item, ItemPayload, ItemRow, ItemType, Location, RedisAccount},
+    models::{Condition, Emoji, Item, ItemPayload, ItemRow, ItemType, Location, RedisAccount},
     schema::{
         KEYSPACE,
         columns::{items, users},
@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{error::AppError, state::AppState};
 use anyhow::Error as anyhowError;
-use chrono::Weekday;
+use chrono::{Duration as chronoDuration, NaiveDate, Weekday};
 use futures_util::future::RemoteHandle;
 use scylla::{
     client::{session::Session, session_builder::SessionBuilder},
@@ -89,6 +89,7 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                 {} {},
                 {} {},
                 {} {},
+                {} {},
                 PRIMARY KEY({})
             ) WITH cdc = {{'enabled': true}}",
                 KEYSPACE,
@@ -107,6 +108,8 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                 items::DESCRIPTION_TYPE,
                 items::EMOJI,
                 items::EMOJI_TYPE,
+                items::EXPIRATION_DATE,
+                items::EXPIRATION_DATE_TYPE,
                 items::PRIMARY_KEY,
             ),
             &[],
@@ -165,7 +168,7 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
             .await?,
         insert_item: database_session
             .prepare(format!(
-                "INSERT INTO {}.{} ({}, {}, {}, {}, {}, {}, {}) VALUES (?, ?, ?, ?, ?, ?, ?) USING TTL ?",
+                "INSERT INTO {}.{} ({}, {}, {}, {}, {}, {}, {}, {}) VALUES (?, ?, ?, ?, ?, ?, ?, ?) USING TTL ?",
                 KEYSPACE,
                 tables::ITEMS,
                 items::ITEM_ID,
@@ -175,12 +178,13 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                 items::LOCATION,
                 items::DESCRIPTION,
                 items::EMOJI,
+                items::EXPIRATION_DATE,
             ))
             .await?,
         get_items: database_session
             .prepare(
                 Statement::new(format!(
-                    "SELECT {}, {}, {}, {}, {}, {}, {} FROM {}.{}", 
+                    "SELECT {}, {}, {}, {}, {}, {}, {}, {} FROM {}.{}", 
                     items::ITEM_ID,
                     items::ITEM_TYPE,
                     items::TITLE,
@@ -188,6 +192,7 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                     items::LOCATION,
                     items::DESCRIPTION,
                     items::EMOJI,
+                    items::EXPIRATION_DATE,
                     KEYSPACE,
                     tables::ITEMS
                 )).with_page_size(100),
@@ -299,8 +304,10 @@ pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), 
                 item.condition as i8,
                 item.location as i8,
                 item.description,
-                item.emoji,
-                get_seconds_until(Weekday::Thu),
+                item.emoji as i8,
+                item.expiration_date,
+                604800,
+                // get_seconds_until(Weekday::Thu),
             ),
             fallback_page_state,
         )
@@ -313,7 +320,16 @@ pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
     row_vec
         .iter()
         .map(
-            |(id, item_type_i8, title, condition_i8, location_i8, description, emoji)| Item {
+            |(
+                id,
+                item_type_i8,
+                title,
+                condition_i8,
+                location_i8,
+                description,
+                emoji_i8,
+                expiration_date,
+            )| Item {
                 item_id: *id,
                 item_type: ItemType::try_from(convert_i8_to_u8(item_type_i8))
                     .unwrap_or(ItemType::Other)
@@ -329,7 +345,11 @@ pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
                     .as_ref()
                     .to_string(),
                 description: description.to_string(),
-                emoji: emoji.to_string(),
+                emoji: Emoji::try_from(convert_i8_to_u8(emoji_i8))
+                    .unwrap_or(Emoji::Books)
+                    .as_ref()
+                    .to_string(),
+                expiration_date: expiration_date.format("%Y-%m-%d").to_string(),
             },
         )
         .collect()
@@ -399,6 +419,23 @@ pub fn get_cdc_text(data: &CDCRow<'_>, column: &str) -> String {
         .to_string()
 }
 
+pub fn get_cdc_date(data: &CDCRow<'_>, column: &str) -> String {
+    let days = data
+        .get_value(column)
+        .as_ref()
+        .and_then(|v| v.as_cql_date())
+        .expect("Missing date attribute")
+        .0 as i64;
+
+    let actual_days = days - 2_147_483_648;
+
+    let base = NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+
+    base.checked_add_signed(chronoDuration::days(actual_days))
+        .map(|d| d.format("%Y-%m-%d").to_string())
+        .expect("Missing the date attribute!")
+}
+
 pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
     Item {
         item_id: get_cdc_id(&data, items::ITEM_ID),
@@ -416,6 +453,10 @@ pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
             .as_ref()
             .to_string(),
         description: get_cdc_text(&data, items::DESCRIPTION),
-        emoji: get_cdc_text(&data, items::EMOJI),
+        emoji: Emoji::try_from(get_cdc_u8(&data, items::EMOJI))
+            .unwrap_or(Emoji::Books)
+            .as_ref()
+            .to_string(),
+        expiration_date: get_cdc_date(&data, items::EXPIRATION_DATE),
     }
 }

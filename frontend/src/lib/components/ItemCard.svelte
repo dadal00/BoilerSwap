@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getDaysUntil } from '$lib/helpers/utils'
 	import {
 		ConditionEmojis,
 		EmojiLabels,
@@ -13,10 +14,12 @@
 	const { item } = $props<{
 		item: Item
 	}>()
+
+	const [expirationDays, expirationColor] = getDaysUntil(item[ItemFields.EXPIRATION_DATE])
 </script>
 
 <div
-	class="bg-white rounded-lg shadow-sm border-l-4 border-l-{item.expirationColor}-500 overflow-hidden card-hover"
+	class="bg-white rounded-lg shadow-sm border-l-4 border-l-{expirationColor}-500 overflow-hidden card-hover"
 >
 	<div class="h-48 bg-gray-200 flex items-center justify-center">
 		<div class="text-6xl">{EmojiLabels[item[ItemFields.EMOJI] as Emoji]}</div>
@@ -41,9 +44,9 @@
 				{item.condition}
 			</div>
 		</div>
-		<div class="flex items-center text-sm text-{item.expirationColor}-600 font-medium">
+		<div class="flex items-center text-sm text-{expirationColor}-600 font-medium">
 			<span class="mr-1">⏰</span>
-			Expires in {item.expiration}
+			{expirationDays}
 		</div>
 	</div>
 </div>
