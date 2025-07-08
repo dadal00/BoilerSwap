@@ -8,6 +8,7 @@ import {
 	type Location
 } from './models'
 import { page } from '$app/state'
+import { PUBLIC_PAGE_SIZE } from '$env/static/public'
 
 class AppState {
 	private signedIn: boolean = $state(false)
@@ -24,6 +25,38 @@ class AppState {
 	private locationFilter: Location | '' = $state('')
 	private conditionFilter: Condition | '' = $state('')
 	private hits: Item[] = $state([])
+	private offset: number = $state(0)
+
+	private todaysDate: Date = new Date()
+
+	getDate(): Date {
+		return this.todaysDate
+	}
+
+	getOffset(): number {
+		return this.offset
+	}
+
+	setOffset(offset: number): void {
+		this.offset = Math.max(
+			Math.min(
+				offset,
+				Math.floor(this.totalHits / Number(PUBLIC_PAGE_SIZE)) * Number(PUBLIC_PAGE_SIZE)
+			),
+			0
+		)
+	}
+
+	incrementOffset(): void {
+		this.offset = Math.min(
+			this.offset + Number(PUBLIC_PAGE_SIZE),
+			Math.floor(this.totalHits / Number(PUBLIC_PAGE_SIZE)) * Number(PUBLIC_PAGE_SIZE)
+		)
+	}
+
+	decrementOffset(): void {
+		this.offset = Math.max(this.offset - Number(PUBLIC_PAGE_SIZE), 0)
+	}
 
 	getLimited(): boolean {
 		return this.limited
@@ -39,6 +72,7 @@ class AppState {
 			this.limited = false
 		}, 500)
 	}
+
 	nowProductLimited(): void {
 		this.productLimited = true
 		setTimeout(() => {
@@ -47,18 +81,22 @@ class AppState {
 	}
 
 	setQuery(query: string): void {
+		this.offset = 0
 		this.query = query
 	}
 
 	setItemTypeFilter(filter: ItemType | ''): void {
+		this.offset = 0
 		this.itemTypeFilter = filter
 	}
 
 	setLocationFilter(filter: Location | ''): void {
+		this.offset = 0
 		this.locationFilter = filter
 	}
 
 	setConditionFilter(filter: Condition | ''): void {
+		this.offset = 0
 		this.conditionFilter = filter
 	}
 
@@ -67,7 +105,8 @@ class AppState {
 			query: this.query,
 			[ItemFields.ITEM_TYPE]: this.itemTypeFilter,
 			[ItemFields.LOCATION]: this.locationFilter,
-			[ItemFields.CONDITION]: this.conditionFilter
+			[ItemFields.CONDITION]: this.conditionFilter,
+			offset: this.offset
 		}
 	}
 

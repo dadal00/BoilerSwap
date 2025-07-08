@@ -1,4 +1,4 @@
-import { PUBLIC_MEILI_URL, PUBLIC_MEILI_KEY } from '$env/static/public'
+import { PUBLIC_MEILI_URL, PUBLIC_MEILI_KEY, PUBLIC_PAGE_SIZE } from '$env/static/public'
 import { Meilisearch } from 'meilisearch'
 import {
 	ItemFields,
@@ -22,7 +22,8 @@ export async function search(
 	query: string,
 	itemTypeFilter: ItemType | '',
 	locationFilter: Location | '',
-	conditionFilter: Condition | ''
+	conditionFilter: Condition | '',
+	offset: number
 ) {
 	const filters: string[] = []
 
@@ -39,7 +40,9 @@ export async function search(
 	}
 
 	const response = await client.index(ItemsTableName).search(query, {
-		filter: filters
+		filter: filters,
+		limit: Number(PUBLIC_PAGE_SIZE),
+		offset: offset
 	})
 
 	appState.setQueryResults(response.hits as Item[], response.estimatedTotalHits)

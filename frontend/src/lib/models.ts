@@ -49,17 +49,17 @@ export const ConditionLabels: Record<Condition, string> = {
 	Fair: 'Fair - Noticeable wear but still usable'
 }
 
-export const EmojiIterable = ['chair', 'snowflake', 'books', 'pan', 'monitor', 'decor'] as const
+export const EmojiIterable = ['Chair', 'Snowflake', 'Books', 'Pan', 'Monitor', 'Decor'] as const
 
 export type Emoji = (typeof EmojiIterable)[number]
 
 export const EmojiLabels: Record<Emoji, string> = {
-	chair: '🪑',
-	snowflake: '❄️',
-	books: '📚',
-	pan: '🍳',
-	monitor: '🖥️',
-	decor: '🎨'
+	Chair: '🪑',
+	Snowflake: '❄️',
+	Books: '📚',
+	Pan: '🍳',
+	Monitor: '🖥️',
+	Decor: '🎨'
 }
 
 export const LocationIterable = [
@@ -91,7 +91,8 @@ export const ItemFields = {
 	CONDITION: 'condition',
 	LOCATION: 'location',
 	DESCRIPTION: 'description',
-	EMOJI: 'emoji'
+	EMOJI: 'emoji',
+	EXPIRATION_DATE: 'expiration_date'
 } as const
 
 export type Item = {
@@ -102,6 +103,7 @@ export type Item = {
 	[ItemFields.LOCATION]: Location
 	[ItemFields.DESCRIPTION]: string
 	[ItemFields.EMOJI]: Emoji
+	[ItemFields.EXPIRATION_DATE]?: string
 }
 
 export enum Status {
@@ -116,6 +118,7 @@ export type FullQuery = {
 	[ItemFields.ITEM_TYPE]: ItemType | ''
 	[ItemFields.LOCATION]: Location | ''
 	[ItemFields.CONDITION]: Condition | ''
+	offset: number
 }
 
 export type VerifcationType = 'verify' | 'forget'

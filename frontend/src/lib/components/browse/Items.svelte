@@ -9,7 +9,7 @@
 
 	$effect(() => {
 		if (!page.url.pathname.includes('/browse')) {
-			search('', '', '', '')
+			search('', '', '', '', 0)
 			return
 		}
 
@@ -24,13 +24,14 @@
 				fullQuery.query,
 				fullQuery[ItemFields.ITEM_TYPE],
 				fullQuery[ItemFields.LOCATION],
-				fullQuery[ItemFields.CONDITION]
+				fullQuery[ItemFields.CONDITION],
+				fullQuery.offset
 			)
 		}, 200)
 	})
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 products-display">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 	{#each appState.getHits() as hit}
 		<ItemCard item={hit} />
 	{/each}

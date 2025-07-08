@@ -30,6 +30,7 @@
 		appState.setItemTypeFilter('')
 		appState.setLocationFilter('')
 		appState.setConditionFilter('')
+		appState.setOffset(0)
 	})
 </script>
 

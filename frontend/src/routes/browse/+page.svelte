@@ -1,6 +1,7 @@
 <script lang="ts">
 	import BrowseSearch from '$lib/components/browse/BrowseSearch.svelte'
 	import Items from '$lib/components/browse/Items.svelte'
+	import PageButtons from '$lib/components/browse/PageButtons.svelte'
 </script>
 
 <svelte:head>
@@ -11,4 +12,5 @@
 	<h1 class="text-3xl font-bold mb-8">Browse All Items</h1>
 	<BrowseSearch />
 	<Items />
+	<PageButtons />
 </div>
