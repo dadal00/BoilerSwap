@@ -9,11 +9,12 @@
 			? 'bg-gray-300 cursor-not-allowed'
 			: 'bg-yellow-400 hover:bg-yellow-500'} text-gray-800 py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
 		onclick={() => {
-			if (appState.getLimited()) {
+			if (appState.getLimited() || appState.getOffset() - Number(PUBLIC_PAGE_SIZE) < 0) {
 				return
 			}
 			appState.nowLimited()
 			appState.decrementOffset()
+			window.scrollTo({ top: 0, behavior: 'auto' })
 		}}
 	>
 		← Previous
@@ -24,11 +25,15 @@
 			? 'bg-gray-300 cursor-not-allowed'
 			: 'bg-yellow-400 hover:bg-yellow-500'} text-gray-800 py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
 		onclick={() => {
-			if (appState.getLimited()) {
+			if (
+				appState.getLimited() ||
+				appState.getOffset() + Number(PUBLIC_PAGE_SIZE) > appState.getTotalHits()
+			) {
 				return
 			}
 			appState.nowLimited()
 			appState.incrementOffset()
+			window.scrollTo({ top: 0, behavior: 'auto' })
 		}}
 	>
 		Next →

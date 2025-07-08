@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{error::AppError, state::AppState};
 use anyhow::Error as anyhowError;
-use chrono::{Duration as chronoDuration, NaiveDate};
+use chrono::{Duration as chronoDuration, NaiveDate, Utc};
 use futures_util::future::RemoteHandle;
 use once_cell::sync::Lazy;
 use scylla::{
@@ -308,9 +308,8 @@ pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), 
                 item.location as i8,
                 item.description,
                 item.emoji as i8,
-                item.expiration_date,
+                Utc::now().date_naive() + chronoDuration::days(7),
                 604800,
-                // get_seconds_until(Weekday::Thu),
             ),
             fallback_page_state,
         )
