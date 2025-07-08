@@ -6,12 +6,13 @@ use super::{
         columns::{items, users},
         tables,
     },
-    utilities::{convert_i8_to_u8, get_seconds_until},
+    utilities::convert_i8_to_u8,
 };
 use crate::{error::AppError, state::AppState};
 use anyhow::Error as anyhowError;
-use chrono::{Duration as chronoDuration, NaiveDate, Weekday};
+use chrono::{Duration as chronoDuration, NaiveDate};
 use futures_util::future::RemoteHandle;
+use once_cell::sync::Lazy;
 use scylla::{
     client::{session::Session, session_builder::SessionBuilder},
     response::{PagingState, query_result::FirstRowError::RowsEmpty},
@@ -36,6 +37,8 @@ pub struct DatabaseQueries {
     pub insert_item: PreparedStatement,
     pub get_items: PreparedStatement,
 }
+
+static BASE_DATE: Lazy<NaiveDate> = Lazy::new(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
 
 pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError> {
     let database_uri = env::var("RUST_DB_URI").unwrap_or_else(|_| {
@@ -427,11 +430,8 @@ pub fn get_cdc_date(data: &CDCRow<'_>, column: &str) -> String {
         .expect("Missing date attribute")
         .0 as i64;
 
-    let actual_days = days - 2_147_483_648;
-
-    let base = NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
-
-    base.checked_add_signed(chronoDuration::days(actual_days))
+    BASE_DATE
+        .checked_add_signed(chronoDuration::days(days - 2_147_483_648))
         .map(|d| d.format("%Y-%m-%d").to_string())
         .expect("Missing the date attribute!")
 }
