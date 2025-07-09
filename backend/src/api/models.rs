@@ -178,4 +178,11 @@ pub struct Item {
     pub expiration_date: String,
 }
 
+pub struct CronItem {
+    pub item_id: Uuid,
+    pub expiration_date: NaiveDate,
+}
+
 pub type ItemRow<'a> = (Uuid, i8, &'a str, i8, i8, &'a str, i8, NaiveDate);
+
+pub type CronItemRow<'a> = (Uuid, NaiveDate);

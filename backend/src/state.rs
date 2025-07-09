@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        database::{DatabaseQueries, init_database},
+        database::{DatabaseQueries, expire_ttl, init_database, spawn_ttl_task},
         meilisearch::init_meilisearch,
         redis::init_redis,
     },
@@ -25,14 +25,18 @@ pub struct AppState {
 
 impl AppState {
     pub async fn new() -> Result<(Arc<Self>, JoinHandle<Result<(), AppError>>), AppError> {
-        let (database_session, database_queries) = init_database().await?;
-        let meili_future = init_meilisearch(database_session.clone(), &database_queries);
         let redis_future = init_redis();
+        let (database_session, database_queries) = init_database().await?;
+        let expire_ttl_now_future = expire_ttl(database_session.clone(), &database_queries);
+        let expire_ttl_future = spawn_ttl_task(database_session.clone(), &database_queries);
+        let meili_future = init_meilisearch(database_session.clone(), &database_queries);
 
         let config = Config::load()?;
         let metrics = Metrics::default();
 
         let redis_connection_manager = redis_future.await?;
+        expire_ttl_future.await?;
+        expire_ttl_now_future.await?;
         let (meili_client, meili_reindex_future) = meili_future.await?;
 
         Ok((

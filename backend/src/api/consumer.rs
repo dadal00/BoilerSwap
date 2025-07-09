@@ -40,7 +40,12 @@ impl Consumer for MeiliConsumer {
                 )
                 .await?;
             }
-            OperationType::RowDelete => {
+            OperationType::RowDelete
+            | OperationType::PartitionDelete
+            | OperationType::RowRangeDelInclLeft
+            | OperationType::RowRangeDelExclLeft
+            | OperationType::RowRangeDelInclRight
+            | OperationType::RowRangeDelExclRight => {
                 delete_item(
                     self.meili_client.clone(),
                     &self.meili_index,

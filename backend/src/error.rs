@@ -21,6 +21,7 @@ use serde_json::Error as serdeJsonError;
 use std::{env::VarError, io::Error as IOError, num::ParseIntError, string::FromUtf8Error};
 use thiserror::Error;
 use tokio::task::JoinError;
+use tokio_cron_scheduler::JobSchedulerError;
 use tracing::error;
 
 #[derive(Error, Debug)]
@@ -87,6 +88,9 @@ pub enum AppError {
 
     #[error("Anyhow error: {0}")]
     AnyhowError(#[from] anyhowError),
+
+    #[error("TokioCron error: {0}")]
+    TokioCron(#[from] JobSchedulerError),
 }
 
 impl IntoResponse for AppError {

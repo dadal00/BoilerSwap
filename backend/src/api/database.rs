@@ -1,6 +1,9 @@
 use super::{
     consumer::MeiliConsumerFactory,
-    models::{Condition, Emoji, Item, ItemPayload, ItemRow, ItemType, Location, RedisAccount},
+    models::{
+        Condition, CronItem, CronItemRow, Emoji, Item, ItemPayload, ItemRow, ItemType, Location,
+        RedisAccount,
+    },
     schema::{
         KEYSPACE,
         columns::{items, users},
@@ -16,14 +19,15 @@ use once_cell::sync::Lazy;
 use scylla::{
     client::{session::Session, session_builder::SessionBuilder},
     response::{PagingState, query_result::FirstRowError::RowsEmpty},
-    statement::{prepared::PreparedStatement, unprepared::Statement},
+    statement::{batch::Batch, prepared::PreparedStatement, unprepared::Statement},
 };
 use scylla_cdc::{
     checkpoints::TableBackedCheckpointSaver,
     consumer::CDCRow,
     log_reader::{CDCLogReader, CDCLogReaderBuilder},
 };
-use std::{env, sync::Arc, time::Duration};
+use std::{env, ops::ControlFlow, sync::Arc, time::Duration};
+use tokio_cron_scheduler::{Job, JobScheduler};
 use tracing::warn;
 use uuid::Uuid;
 
@@ -36,6 +40,8 @@ pub struct DatabaseQueries {
     pub unlock_account: PreparedStatement,
     pub insert_item: PreparedStatement,
     pub get_items: PreparedStatement,
+    pub delete_item: PreparedStatement,
+    pub get_cron_items: PreparedStatement,
 }
 
 static BASE_DATE: Lazy<NaiveDate> = Lazy::new(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
@@ -201,6 +207,25 @@ pub async fn init_database() -> Result<(Arc<Session>, DatabaseQueries), AppError
                 )).with_page_size(100),
             )
             .await?,
+        get_cron_items: database_session
+            .prepare(
+                Statement::new(format!(
+                    "SELECT {}, {} FROM {}.{}", 
+                    items::ITEM_ID,
+                    items::EXPIRATION_DATE,
+                    KEYSPACE,
+                    tables::ITEMS
+                )).with_page_size(100),
+            )
+            .await?,
+        delete_item: database_session
+            .prepare(format!(
+                "DELETE FROM {}.{} WHERE {} = ?",
+                KEYSPACE,
+                tables::ITEMS,
+                items::ITEM_ID,
+            ))
+            .await?,
     };
 
     Ok((Arc::new(database_session), database_queries))
@@ -309,7 +334,7 @@ pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), 
                 item.description,
                 item.emoji as i8,
                 Utc::now().date_naive() + chronoDuration::days(7),
-                604800,
+                604800 * 3,
             ),
             fallback_page_state,
         )
@@ -458,4 +483,90 @@ pub fn convert_cdc_item(data: CDCRow<'_>) -> Item {
             .to_string(),
         expiration_date: get_cdc_date(&data, items::EXPIRATION_DATE),
     }
+}
+
+pub async fn spawn_ttl_task(
+    database_session: Arc<Session>,
+    database_queries: &DatabaseQueries,
+) -> Result<(), AppError> {
+    let scheduler = JobScheduler::new().await?;
+
+    let database_session = database_session.clone();
+    let database_queries = database_queries.clone();
+
+    scheduler
+        .add(Job::new_async("1 0 0 * * *", move |_uuid, _lock| {
+            let database_session = database_session.clone();
+            let database_queries = database_queries.clone();
+            Box::pin(async move {
+                if expire_ttl(database_session, &database_queries)
+                    .await
+                    .is_err()
+                {
+                    warn!("Expiring ttl failed!");
+                }
+            })
+        })?)
+        .await?;
+
+    tokio::spawn(async move {
+        if scheduler.start().await.is_err() {
+            warn!("Scheduler failed!");
+        }
+    });
+
+    Ok(())
+}
+
+pub fn convert_cron_items(row_vec: &[CronItemRow]) -> Vec<CronItem> {
+    row_vec
+        .iter()
+        .map(|(id, expiration_date)| CronItem {
+            item_id: *id,
+            expiration_date: *expiration_date,
+        })
+        .collect()
+}
+
+pub async fn expire_ttl(
+    database_session: Arc<Session>,
+    database_queries: &DatabaseQueries,
+) -> Result<(), AppError> {
+    let mut paging_state = PagingState::start();
+
+    let mut batch: Batch = Default::default();
+    let mut batch_values = Vec::new();
+
+    loop {
+        let (query_result, paging_state_response) = database_session
+            .execute_single_page(&database_queries.get_cron_items, &[], paging_state)
+            .await?;
+
+        let row_result = query_result.into_rows_result()?;
+
+        let row_vec: Vec<CronItemRow> = row_result
+            .rows::<CronItemRow>()?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let items: Vec<CronItem> = convert_cron_items(&row_vec);
+
+        for item in items {
+            if item.expiration_date < Utc::now().date_naive() {
+                batch.append_statement(database_queries.delete_item.clone());
+
+                batch_values.push((item.item_id,));
+            }
+        }
+
+        database_session.batch(&batch, &batch_values).await?;
+
+        match paging_state_response.into_paging_control_flow() {
+            ControlFlow::Break(()) => {
+                break;
+            }
+            ControlFlow::Continue(new_paging_state) => paging_state = new_paging_state,
+        }
+    }
+
+    Ok(())
 }
