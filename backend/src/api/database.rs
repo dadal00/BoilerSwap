@@ -319,14 +319,16 @@ pub async fn unlock_account(
     Ok(())
 }
 
-pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), AppError> {
+pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<Uuid, AppError> {
     let fallback_page_state = PagingState::start();
+    let id = Uuid::new_v4();
+
     state
         .database_session
         .execute_single_page(
             &state.database_queries.insert_item,
             (
-                Uuid::new_v4(),
+                &id,
                 item.item_type as i8,
                 item.title,
                 item.condition as i8,
@@ -340,7 +342,7 @@ pub async fn insert_item(state: Arc<AppState>, item: ItemPayload) -> Result<(), 
         )
         .await?;
 
-    Ok(())
+    Ok(id)
 }
 
 pub fn convert_db_items(row_vec: &Vec<ItemRow>) -> Vec<Item> {
@@ -387,6 +389,7 @@ pub async fn start_cdc(
     scylla_keyspace: &str,
     scylla_table: &str,
     scylla_id_name: &str,
+    redis_deletion_name: &str,
 ) -> Result<(CDCLogReader, RemoteHandle<Result<(), anyhowError>>), AppError> {
     let items_checkpoint_saver = Arc::new(
         TableBackedCheckpointSaver::new_with_default_ttl(
@@ -409,8 +412,9 @@ pub async fn start_cdc(
         .sleep_interval(Duration::from_secs(10))
         .pause_between_saves(Duration::from_secs(10))
         .consumer_factory(Arc::new(MeiliConsumerFactory {
-            meili_client: state.meili_client.clone(),
+            state: state.clone(),
             meili_index: scylla_table.to_string(),
+            redis_deletion_name: redis_deletion_name.to_string(),
             scylla_id_name: scylla_id_name.to_string(),
         }))
         .checkpoint_saver(items_checkpoint_saver)

@@ -1,6 +1,6 @@
 use super::{
     database::get_user,
-    redis::{incr_failed_attempts, try_get},
+    redis::{increment_lock_key, is_redis_locked},
 };
 use crate::{AppError, AppState};
 use lettre::{
@@ -60,17 +60,16 @@ pub fn spawn_code_task(
                 Err(_) => return,
             }
 
-            if let Ok(Some(attempts)) = try_get(
+            if let Ok(is_ok) = is_redis_locked(
                 state.clone(),
                 &forgot_key.clone().expect("is_some failed"),
                 &email,
+                &state.config.verify_max_attempts,
             )
             .await
             {
-                if let Ok(count) = attempts.parse::<u8>() {
-                    if count >= state.config.verify_max_attempts {
-                        return;
-                    }
+                if !is_ok {
+                    return;
                 }
             }
         }
@@ -88,7 +87,7 @@ pub fn spawn_code_task(
                 }
             }
         } else if forgot_key.is_some()
-            && (incr_failed_attempts(
+            && (increment_lock_key(
                 state.clone(),
                 &forgot_key.expect("is_some failed"),
                 &email,

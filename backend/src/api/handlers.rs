@@ -1,8 +1,10 @@
 use super::{
-    database::insert_item,
     lock::{freeze_account, unfreeze_account},
     models::{Account, Action, ItemPayload, RedisAccount, RedisAction, Token},
-    redis::{create_redis_account, get_redis_account, incr_failed_attempts, remove_id, try_get},
+    redis::{
+        create_redis_account, get_redis_account, handle_item_insertion, increment_lock_key,
+        is_redis_locked, remove_id,
+    },
     sessions::{create_session, create_temporary_session, generate_cookie, get_cookie},
     twofactor::{CODE_REGEX, generate_code},
     utilities::{get_hashed_ip, get_key},
@@ -63,15 +65,22 @@ pub async fn forgot_handler(
     let failed_verify_key = get_key(RedisAction::LockedVerify, &hashed_ip);
     let code_key = get_key(RedisAction::LockedCode, &hashed_ip);
 
-    if let Some(attempts) = try_get(state.clone(), &failed_verify_key, &payload.token).await? {
-        if attempts.parse::<u8>()? >= state.config.verify_max_attempts {
-            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
-        }
-    }
-    if let Some(attempts) = try_get(state.clone(), &code_key, &payload.token).await? {
-        if attempts.parse::<u8>()? >= state.config.max_codes {
-            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
-        }
+    if is_redis_locked(
+        state.clone(),
+        &failed_verify_key,
+        &payload.token,
+        &state.config.verify_max_attempts,
+    )
+    .await?
+        || is_redis_locked(
+            state.clone(),
+            &code_key,
+            &payload.token,
+            &state.config.max_codes,
+        )
+        .await?
+    {
+        return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
     }
 
     let redis_account = RedisAccount {
@@ -222,20 +231,26 @@ pub async fn authenticate_handler(
     let failed_auth_key = get_key(RedisAction::LockedAuth, &hashed_ip);
     let code_key = get_key(RedisAction::LockedCode, &hashed_ip);
 
-    if let Some(attempts) = try_get(state.clone(), &failed_auth_key, &payload.email).await? {
-        if attempts.parse::<u8>()? >= state.config.auth_max_attempts {
-            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
-        }
-    }
-
-    if let Some(attempts) = try_get(state.clone(), &code_key, &payload.email).await? {
-        if attempts.parse::<u8>()? >= state.config.max_codes {
-            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
-        }
+    if is_redis_locked(
+        state.clone(),
+        &failed_auth_key,
+        &payload.email,
+        &state.config.auth_max_attempts,
+    )
+    .await?
+        || is_redis_locked(
+            state.clone(),
+            &code_key,
+            &payload.email,
+            &state.config.max_codes,
+        )
+        .await?
+    {
+        return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
     }
 
     if payload.action == Action::Forgot {
-        incr_failed_attempts(
+        increment_lock_key(
             state.clone(),
             &failed_auth_key,
             &payload.email,
@@ -288,11 +303,12 @@ pub async fn post_item_handler(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ItemPayload>,
 ) -> Result<impl IntoResponse, AppError> {
-    match verify_token(state.clone(), headers.clone()).await? {
-        Some((_, redis_action, _)) => {
-            if redis_action != RedisAction::Session {
+    let email = match verify_token(state.clone(), headers.clone()).await? {
+        Some((a, pending_redis_action, _)) => {
+            if pending_redis_action != RedisAction::Session {
                 return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
             }
+            a
         }
         None => {
             return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
@@ -303,7 +319,23 @@ pub async fn post_item_handler(
         return Ok((StatusCode::BAD_REQUEST, e).into_response());
     }
 
-    insert_item(state.clone(), payload).await?;
+    if is_redis_locked(
+        state.clone(),
+        RedisAction::LockedItems.as_ref(),
+        &email.clone().expect("session creation faulty"),
+        &state.config.max_items,
+    )
+    .await?
+    {
+        return Ok((StatusCode::UNAUTHORIZED, "Posted too many items").into_response());
+    }
+
+    handle_item_insertion(
+        state.clone(),
+        payload,
+        &email.expect("session creation faulty"),
+    )
+    .await?;
 
     Ok((StatusCode::OK).into_response())
 }
@@ -326,21 +358,26 @@ pub async fn resend_handler(
             return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
         }
     };
+
     if result.is_none() {
         return Ok((StatusCode::UNAUTHORIZED, "Invalid Credentials").into_response());
     }
+
     remove_id(state.clone(), redis_action.as_ref(), &id).await?;
 
     let redis_account: RedisAccount = serde_json::from_str(&result.expect("is_none failed"))?;
-
     let hashed_ip = get_hashed_ip(&headers, address.ip());
-
     let code_key = get_key(RedisAction::LockedCode, &hashed_ip);
 
-    if let Some(attempts) = try_get(state.clone(), &code_key, &redis_account.email).await? {
-        if attempts.parse::<u8>()? >= state.config.max_codes {
-            return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
-        }
+    if is_redis_locked(
+        state.clone(),
+        &code_key,
+        &redis_account.email,
+        &state.config.max_codes,
+    )
+    .await?
+    {
+        return Ok((StatusCode::UNAUTHORIZED, "Try again in 30 minutes").into_response());
     }
 
     Ok((

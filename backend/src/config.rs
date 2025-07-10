@@ -18,6 +18,7 @@ pub struct Config {
     pub session_duration_seconds: u16,
     pub max_codes: u8,
     pub max_codes_duration_seconds: u16,
+    pub max_items: u8,
 }
 
 impl Config {
@@ -110,6 +111,14 @@ impl Config {
             .parse()
             .map_err(|_| AppError::Config("Invalid RUST_MAX_CODES_DURATION_SECS value".into()))?;
 
+        let max_items = var("RUST_MAX_ITEMS")
+            .inspect_err(|_| {
+                info!("RUST_MAX_ITEMS not set, using default");
+            })
+            .unwrap_or_else(|_| "15".into())
+            .parse()
+            .map_err(|_| AppError::Config("Invalid RUST_MAX_ITEMS value".into()))?;
+
         let from_email = read_secret("RUST_FROM_EMAIL")
             .inspect_err(|_| {
                 info!("RUST_FROM_EMAIL not set, using default");
@@ -143,6 +152,7 @@ impl Config {
             session_duration_seconds,
             max_codes,
             max_codes_duration_seconds,
+            max_items,
         })
     }
 }

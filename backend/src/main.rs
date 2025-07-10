@@ -5,6 +5,7 @@ use crate::{
             api_token_check, authenticate_handler, delete_handler, forgot_handler,
             post_item_handler, resend_handler, verify_handler,
         },
+        models::RedisAction,
         schema::{KEYSPACE, columns::items, tables},
     },
     error::AppError,
@@ -79,8 +80,14 @@ async fn main() -> Result<(), AppError> {
 
     meili_reindex_future.await??;
 
-    let (mut cdc_reader, cdc_future) =
-        start_cdc(state.clone(), KEYSPACE, tables::ITEMS, items::ITEM_ID).await?;
+    let (mut cdc_reader, cdc_future) = start_cdc(
+        state.clone(),
+        KEYSPACE,
+        tables::ITEMS,
+        items::ITEM_ID,
+        RedisAction::DeletedItem.as_ref(),
+    )
+    .await?;
 
     info!("Server running on {}", addr);
 

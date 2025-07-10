@@ -1,7 +1,7 @@
 use super::{
     database::insert_user,
     models::{Action, RedisAccount, RedisAction},
-    redis::{incr_failed_attempts, insert_id, insert_session},
+    redis::{increment_lock_key, insert_id, insert_session},
     twofactor::spawn_code_task,
 };
 use crate::{AppError, AppState};
@@ -85,14 +85,15 @@ pub async fn create_temporary_session(
             redis_account.code.clone(),
             forgot_key.clone(),
         );
-        incr_failed_attempts(
+
+        increment_lock_key(
             state.clone(),
             code_key.as_ref().unwrap(),
             &redis_account.email.clone(),
             &state.config.max_codes_duration_seconds,
             &state.config.max_codes,
         )
-        .await?
+        .await?;
     }
 
     let serialized = match result {
@@ -107,7 +108,7 @@ pub async fn create_temporary_session(
         redis_action.as_ref(),
         &id,
         serialized,
-        state.config.temporary_session_duration_seconds,
+        state.config.temporary_session_duration_seconds.into(),
     )
     .await?;
 

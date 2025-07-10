@@ -69,6 +69,12 @@ pub enum RedisAction {
 
     #[strum(serialize = "code_lock")]
     LockedCode,
+
+    #[strum(serialize = "item_lock")]
+    LockedItems,
+
+    #[strum(serialize = "item_deleted")]
+    DeletedItem,
 }
 
 #[derive(Deserialize)]

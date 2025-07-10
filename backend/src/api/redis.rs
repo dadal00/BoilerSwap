@@ -1,7 +1,7 @@
 use super::{
-    database::get_user,
+    database::{get_user, insert_item},
     lock::check_locks,
-    models::{Action, RedisAccount, RedisAction},
+    models::{Action, ItemPayload, RedisAccount, RedisAction},
     twofactor::generate_code,
     verify::{hash_password, verify_password},
 };
@@ -25,7 +25,22 @@ static FAILED_ATTEMPTS_SCRIPT: Lazy<Script> = Lazy::new(|| {
         r#"
         local attempts = redis.call("INCR", KEYS[1])
         if attempts <= tonumber(ARGV[2]) then
-            redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
+            if tonumber(ARGV[1]) > 0 then
+                redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
+            end
+        else
+            redis.call("DECR", KEYS[1])
+        end
+    "#,
+    )
+});
+
+static DECR_ITEMS_SCRIPT: Lazy<Script> = Lazy::new(|| {
+    Script::new(
+        r#"
+        local attempts = redis.call("DECR", KEYS[1])
+        if attempts <= 0 then
+            redis.call("DEL", KEYS[1])
         end
     "#,
     )
@@ -87,7 +102,7 @@ pub async fn insert_session(
     state
         .redis_connection_manager
         .clone()
-        .set_ex(format!("{}:{}", key, session_id), 1, 3600)
+        .set_ex(format!("{}:{}", key, session_id), email, 3600)
         .await?;
 
     state
@@ -115,25 +130,29 @@ pub async fn insert_session(
 
 pub async fn insert_id(
     state: Arc<AppState>,
-    key: &str,
-    id: &str,
-    serialized: &str,
-    ttl: u16,
+    key_prefix: &str,
+    key_id: &str,
+    value: &str,
+    ttl: u32,
 ) -> Result<(), AppError> {
     state
         .redis_connection_manager
         .clone()
-        .set_ex(format!("{}:{}", key, id), serialized, ttl.into())
+        .set_ex(format!("{}:{}", key_prefix, key_id), value, ttl.into())
         .await?;
 
     Ok(())
 }
 
-pub async fn remove_id(state: Arc<AppState>, key: &str, id: &str) -> Result<(), AppError> {
+pub async fn remove_id(
+    state: Arc<AppState>,
+    key_prefix: &str,
+    key_id: &str,
+) -> Result<(), AppError> {
     state
         .redis_connection_manager
         .clone()
-        .del(format!("{}:{}", key, id))
+        .del(format!("{}:{}", key_prefix, key_id))
         .await?;
 
     Ok(())
@@ -185,12 +204,16 @@ pub async fn get_redis_account(
             }
 
             let deserialized: RedisAccount = serde_json::from_str(serialized)?;
-            if let Some(attempts) =
-                try_get(state.clone(), failed_verify_key, &deserialized.email).await?
+
+            if is_redis_locked(
+                state.clone(),
+                failed_verify_key,
+                &deserialized.email,
+                &state.config.verify_max_attempts,
+            )
+            .await?
             {
-                if attempts.parse::<u8>()? >= state.config.verify_max_attempts {
-                    return Ok(None);
-                }
+                return Ok(None);
             }
 
             let locked = match redis_action {
@@ -206,7 +229,7 @@ pub async fn get_redis_account(
             };
 
             if !locked && *redis_action != RedisAction::Update && code != deserialized.code {
-                incr_failed_attempts(
+                increment_lock_key(
                     state.clone(),
                     failed_verify_key,
                     &deserialized.email,
@@ -266,7 +289,7 @@ pub async fn create_redis_account(
             if action == Action::Login
                 && !spawn_blocking(move || verify_password(&plaintext, &hash)).await??
             {
-                incr_failed_attempts(
+                increment_lock_key(
                     state.clone(),
                     failed_auth_key,
                     email,
@@ -288,7 +311,7 @@ pub async fn create_redis_account(
     }
 }
 
-pub async fn incr_failed_attempts(
+pub async fn increment_lock_key(
     state: Arc<AppState>,
     key: &str,
     email: &str,
@@ -303,4 +326,57 @@ pub async fn incr_failed_attempts(
         .await?;
 
     Ok(())
+}
+
+pub async fn decrement_items(
+    redis_connection_manager: ConnectionManager,
+    key: &str,
+    email: &str,
+) -> Result<(), AppError> {
+    let _count: () = DECR_ITEMS_SCRIPT
+        .key(format!("{}:{}", key, email))
+        .invoke_async(&mut redis_connection_manager.clone())
+        .await?;
+
+    Ok(())
+}
+
+pub async fn handle_item_insertion(
+    state: Arc<AppState>,
+    item: ItemPayload,
+    email: &str,
+) -> Result<(), AppError> {
+    insert_id(
+        state.clone(),
+        RedisAction::DeletedItem.as_ref(),
+        &insert_item(state.clone(), item).await?.to_string(),
+        email,
+        1_209_600,
+    )
+    .await?;
+
+    increment_lock_key(
+        state.clone(),
+        RedisAction::LockedItems.as_ref(),
+        email,
+        &0,
+        &state.config.max_items,
+    )
+    .await?;
+
+    Ok(())
+}
+
+pub async fn is_redis_locked(
+    state: Arc<AppState>,
+    key_prefix: &str,
+    key_id: &str,
+    threshold: &u8,
+) -> Result<bool, AppError> {
+    if let Some(attempts) = try_get(state.clone(), key_prefix, key_id).await? {
+        if attempts.parse::<u8>()? >= *threshold {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
