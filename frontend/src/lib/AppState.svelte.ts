@@ -17,6 +17,7 @@ class AppState {
 	private toVerifyUpdate: boolean = $state(false)
 
 	private authError: string = $state('')
+	private postError: string = $state('')
 
 	private limited: boolean = $state(false)
 	private productLimited: boolean = $state(false)
@@ -29,6 +30,14 @@ class AppState {
 	private hits: Item[] = $state([])
 	private offset: number = $state(0)
 	private todaysDate: Date = new Date()
+
+	getPostError(): string {
+		return this.postError
+	}
+
+	setPostError(err: string): void {
+		this.postError = err
+	}
 
 	getAuthError(): string {
 		return this.authError
